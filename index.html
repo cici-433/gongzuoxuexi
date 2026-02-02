@@ -1,0 +1,1477 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusOS - 个人综合效能管理平台</title>
+
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- 引入 FontAwesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- 引入自定义样式 -->
+    <link rel="stylesheet" href="css/styles.css">
+
+    <!-- 引入 Chart.js 用于图表展示 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="bg-gray-100 text-gray-800 font-sans antialiased h-screen flex overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-dark text-white flex flex-col shadow-lg transition-all duration-300" id="sidebar">
+        <div class="h-16 flex items-center justify-center border-b border-gray-700">
+            <h1 class="text-2xl font-bold tracking-wider"><i class="fas fa-layer-group mr-2"></i>Nexus<span
+                    class="text-primary">OS</span></h1>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto py-4">
+            <ul class="space-y-2 px-3">
+                <!-- 个人维度 -->
+                <li class="px-3 py-2 text-gray-400 text-xs font-bold uppercase tracking-wider">个人效能 (Personal)</li>
+                <li>
+                    <a href="#" onclick="showSection('dashboard')"
+                        class="nav-link flex items-center p-2 rounded-lg bg-gray-700 text-white group transition-colors"
+                        data-target="dashboard">
+                        <i class="fas fa-tachometer-alt w-6 text-center text-primary group-hover:text-white"></i>
+                        <span class="ml-3">仪表盘 (Dashboard)</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" onclick="showSection('reports')"
+                        class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 group transition-colors"
+                        data-target="reports">
+                        <i class="fas fa-file-alt w-6 text-center text-secondary group-hover:text-white"></i>
+                        <span class="ml-3">汇报管理 (Reports)</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" onclick="showSection('smart')"
+                        class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 group transition-colors"
+                        data-target="smart">
+                        <i class="fas fa-bullseye w-6 text-center text-secondary group-hover:text-white"></i>
+                        <span class="ml-3">目标管理 (SMART)</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" onclick="showSection('time-energy')"
+                        class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 group transition-colors"
+                        data-target="time-energy">
+                        <i class="fas fa-bolt w-6 text-center text-warning group-hover:text-white"></i>
+                        <span class="ml-3">时间与精力 (Energy)</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" onclick="showSection('review')"
+                        class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 group transition-colors"
+                        data-target="review">
+                        <i class="fas fa-clipboard-check w-6 text-center text-blue-400 group-hover:text-white"></i>
+                        <span class="ml-3">流程与复盘 (Review)</span>
+                    </a>
+                </li>
+
+                <!-- 项目维度 -->
+                <li class="px-3 py-2 mt-4 text-gray-400 text-xs font-bold uppercase tracking-wider">项目交付 (Project)</li>
+                <li>
+                    <a href="#" onclick="showSection('project-scope')"
+                        class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 group transition-colors"
+                        data-target="project-scope">
+                        <i class="fas fa-sitemap w-6 text-center text-blue-400 group-hover:text-white"></i>
+                        <span class="ml-3">范围与进度 (Scope)</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" onclick="showSection('project-quality')"
+                        class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 group transition-colors"
+                        data-target="project-quality">
+                        <i class="fas fa-check-double w-6 text-center text-green-400 group-hover:text-white"></i>
+                        <span class="ml-3">质量与资源 (Quality)</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" onclick="showSection('project-risk')"
+                        class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 group transition-colors"
+                        data-target="project-risk">
+                        <i class="fas fa-exclamation-triangle w-6 text-center text-red-400 group-hover:text-white"></i>
+                        <span class="ml-3">风险与变更 (Risk)</span>
+                    </a>
+                </li>
+
+                <!-- 团队维度 -->
+                <li class="px-3 py-2 mt-4 text-gray-400 text-xs font-bold uppercase tracking-wider">团队管理 (Team)</li>
+                <li>
+                    <a href="#" onclick="showSection('team-okr')"
+                        class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 group transition-colors"
+                        data-target="team-okr">
+                        <i class="fas fa-bullseye w-6 text-center text-red-400 group-hover:text-white"></i>
+                        <span class="ml-3">目标对齐 (OKR)</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" onclick="showSection('team-raci')"
+                        class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 group transition-colors"
+                        data-target="team-raci">
+                        <i class="fas fa-users-cog w-6 text-center text-blue-400 group-hover:text-white"></i>
+                        <span class="ml-3">角色权责 (RACI)</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" onclick="showSection('team-sync')"
+                        class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 group transition-colors"
+                        data-target="team-sync">
+                        <i class="fas fa-comments w-6 text-center text-yellow-400 group-hover:text-white"></i>
+                        <span class="ml-3">沟通协作 (Sync)</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" onclick="showSection('team-growth')"
+                        class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 group transition-colors"
+                        data-target="team-growth">
+                        <i class="fas fa-seedling w-6 text-center text-green-400 group-hover:text-white"></i>
+                        <span class="ml-3">绩效发展 (Growth)</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="p-4 border-t border-gray-700">
+            <div class="flex items-center">
+                <img class="h-8 w-8 rounded-full object-cover border-2 border-primary"
+                    src="https://ui-avatars.com/api/?name=Chen+Xunlin&background=random" alt="User Avatar">
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-white">Chen Xunlin</p>
+                    <p class="text-xs text-gray-400">Full Stack Manager</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-gray-50">
+        <!-- Header -->
+        <header class="bg-white shadow-sm h-16 flex items-center justify-between px-6 z-10">
+            <div class="flex items-center">
+                <button class="text-gray-500 hover:text-gray-700 focus:outline-none lg:hidden">
+                    <i class="fas fa-bars fa-lg"></i>
+                </button>
+                <div class="ml-4 relative text-gray-400 focus-within:text-gray-600 hidden md:block">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <input name="search" id="search"
+                        class="block w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:border-primary focus:ring-1 focus:ring-primary sm:text-sm"
+                        placeholder="搜索任务、项目或文档..." type="search">
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button
+                    class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition shadow-sm">
+                    <i class="fas fa-plus mr-1"></i> 快速记录
+                </button>
+                <button class="text-gray-400 hover:text-gray-600 relative">
+                    <i class="far fa-bell fa-lg"></i>
+                    <span class="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Scrollable Content -->
+        <div class="flex-1 overflow-auto p-6">
+
+            <!-- Dashboard Section -->
+            <div id="dashboard-section">
+                <!-- Welcome Section -->
+                <div class="mb-8 flex justify-between items-end">
+                    <div>
+                        <h2 class="text-3xl font-bold text-gray-900">下午好，Xunlin 👋</h2>
+                        <p class="text-gray-500 mt-1">今日聚焦：完成 <span class="text-primary font-semibold">3</span>
+                            个高优先级任务，当前状态 <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">精力充沛</span>
+                        </p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-gray-500">本周目标完成率</p>
+                        <div class="flex items-center justify-end">
+                            <span class="text-2xl font-bold text-gray-900 mr-2">75%</span>
+                            <div class="w-24 bg-gray-200 rounded-full h-2.5">
+                                <div class="bg-primary h-2.5 rounded-full" style="width: 75%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+
+                    <!-- 个人管理：四象限任务矩阵 -->
+                    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-bold text-gray-800"><i
+                                    class="fas fa-th-large text-primary mr-2"></i>任务矩阵 (Eisenhower Matrix)</h3>
+                            <span class="text-xs text-gray-400">基于重要/紧急维度</span>
+                        </div>
+
+                        <div class="quadrant-grid">
+                            <!-- 第一象限：重要且紧急 -->
+                            <div class="bg-red-50 rounded-lg p-4 border border-red-100 relative group">
+                                <div class="absolute top-2 right-2 text-red-200 text-4xl font-bold opacity-20">1</div>
+                                <h4 class="text-red-800 font-bold text-sm mb-3 uppercase">重要且紧急 (Do Now)</h4>
+                                <ul class="space-y-2">
+                                    <li class="flex items-start">
+                                        <input type="checkbox"
+                                            class="mt-1 mr-2 text-red-600 focus:ring-red-500 rounded border-gray-300">
+                                        <span class="text-sm text-gray-700">修复线上支付接口 502 错误</span>
+                                    </li>
+                                    <li class="flex items-start">
+                                        <input type="checkbox"
+                                            class="mt-1 mr-2 text-red-600 focus:ring-red-500 rounded border-gray-300">
+                                        <span class="text-sm text-gray-700">提交 Q2 预算审批</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <!-- 第二象限：重要不紧急 -->
+                            <div class="bg-blue-50 rounded-lg p-4 border border-blue-100 relative">
+                                <div class="absolute top-2 right-2 text-blue-200 text-4xl font-bold opacity-20">2</div>
+                                <h4 class="text-blue-800 font-bold text-sm mb-3 uppercase">重要不紧急 (Schedule)</h4>
+                                <ul class="space-y-2">
+                                    <li class="flex items-start">
+                                        <input type="checkbox"
+                                            class="mt-1 mr-2 text-blue-600 focus:ring-blue-500 rounded border-gray-300">
+                                        <span class="text-sm text-gray-700">个人网站架构重构设计</span>
+                                    </li>
+                                    <li class="flex items-start">
+                                        <input type="checkbox"
+                                            class="mt-1 mr-2 text-blue-600 focus:ring-blue-500 rounded border-gray-300">
+                                        <span class="text-sm text-gray-700">学习 React Server Components</span>
+                                    </li>
+                                    <li class="flex items-start">
+                                        <input type="checkbox"
+                                            class="mt-1 mr-2 text-blue-600 focus:ring-blue-500 rounded border-gray-300">
+                                        <span class="text-sm text-gray-700">制定下季度团队 OKR</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <!-- 第三象限：紧急不重要 -->
+                            <div class="bg-yellow-50 rounded-lg p-4 border border-yellow-100 relative">
+                                <div class="absolute top-2 right-2 text-yellow-200 text-4xl font-bold opacity-20">3
+                                </div>
+                                <h4 class="text-yellow-800 font-bold text-sm mb-3 uppercase">紧急不重要 (Delegate)</h4>
+                                <ul class="space-y-2">
+                                    <li class="flex items-start">
+                                        <input type="checkbox"
+                                            class="mt-1 mr-2 text-yellow-600 focus:ring-yellow-500 rounded border-gray-300">
+                                        <span class="text-sm text-gray-700">回复供应商询价邮件</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <!-- 第四象限：不重要不紧急 -->
+                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-100 relative">
+                                <div class="absolute top-2 right-2 text-gray-200 text-4xl font-bold opacity-20">4</div>
+                                <h4 class="text-gray-600 font-bold text-sm mb-3 uppercase">不重要不紧急 (Delete)</h4>
+                                <ul class="space-y-2">
+                                    <li class="flex items-start">
+                                        <input type="checkbox"
+                                            class="mt-1 mr-2 text-gray-600 focus:ring-gray-500 rounded border-gray-300"
+                                            checked>
+                                        <span class="text-sm text-gray-400 line-through">整理旧文档文件夹</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 时间与番茄钟 -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-lg font-bold text-gray-800"><i
+                                    class="fas fa-hourglass-half text-warning mr-2"></i>专注时刻</h3>
+                        </div>
+
+                        <div class="flex-1 flex flex-col items-center justify-center mb-6">
+                            <div
+                                class="w-40 h-40 rounded-full border-8 border-gray-100 border-t-primary flex items-center justify-center relative shadow-sm">
+                                <div class="text-center">
+                                    <span class="block text-4xl font-bold text-gray-800">25:00</span>
+                                    <span class="text-xs text-gray-500">专注中</span>
+                                </div>
+                            </div>
+                            <div class="mt-6 flex space-x-3">
+                                <button
+                                    class="bg-primary text-white px-6 py-2 rounded-full font-medium hover:bg-indigo-700 shadow-md transition">开始专注</button>
+                                <button
+                                    class="bg-gray-100 text-gray-600 px-6 py-2 rounded-full font-medium hover:bg-gray-200 transition">休息</button>
+                            </div>
+                        </div>
+
+                        <div class="border-t pt-4">
+                            <h4 class="text-xs font-bold text-gray-400 uppercase mb-2">今日时间分布</h4>
+                            <div class="space-y-2">
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>深度工作 (Dev)</span>
+                                        <span>3h 45m</span>
+                                    </div>
+                                    <div class="w-full bg-gray-100 rounded-full h-1.5">
+                                        <div class="bg-primary h-1.5 rounded-full" style="width: 60%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span>会议 (Meeting)</span>
+                                        <span>1h 30m</span>
+                                    </div>
+                                    <div class="w-full bg-gray-100 rounded-full h-1.5">
+                                        <div class="bg-yellow-400 h-1.5 rounded-full" style="width: 25%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 项目与团队概览 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                    <!-- 项目状态 -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-bold text-gray-800"><i
+                                    class="fas fa-rocket text-blue-500 mr-2"></i>进行中的项目</h3>
+                            <a href="#" class="text-sm text-primary hover:underline">查看全部</a>
+                        </div>
+
+                        <div class="space-y-4">
+                            <!-- Project Item 1 -->
+                            <div class="border border-gray-100 rounded-lg p-4 hover:shadow-md transition">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div>
+                                        <h4 class="font-bold text-gray-800">个人博客 2.0 重构</h4>
+                                        <span
+                                            class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded mt-1 inline-block">开发阶段</span>
+                                    </div>
+                                    <span class="text-xs text-gray-500">截止: 10月24日</span>
+                                </div>
+                                <div class="w-full bg-gray-100 rounded-full h-2 mb-2">
+                                    <div class="bg-blue-500 h-2 rounded-full" style="width: 65%"></div>
+                                </div>
+                                <div class="flex justify-between items-center text-xs text-gray-500">
+                                    <span>进度: 65%</span>
+                                    <div class="flex -space-x-2">
+                                        <img class="w-6 h-6 rounded-full border-2 border-white"
+                                            src="https://ui-avatars.com/api/?name=Chen&background=random" alt="">
+                                        <img class="w-6 h-6 rounded-full border-2 border-white"
+                                            src="https://ui-avatars.com/api/?name=Alice&background=random" alt="">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Project Item 2 -->
+                            <div class="border border-gray-100 rounded-lg p-4 hover:shadow-md transition">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div>
+                                        <h4 class="font-bold text-gray-800">Tapd 数据同步插件</h4>
+                                        <span
+                                            class="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded mt-1 inline-block">设计阶段</span>
+                                    </div>
+                                    <span class="text-xs text-gray-500">截止: 11月10日</span>
+                                </div>
+                                <div class="w-full bg-gray-100 rounded-full h-2 mb-2">
+                                    <div class="bg-purple-500 h-2 rounded-full" style="width: 20%"></div>
+                                </div>
+                                <div class="flex justify-between items-center text-xs text-gray-500">
+                                    <span>进度: 20%</span>
+                                    <div class="flex -space-x-2">
+                                        <img class="w-6 h-6 rounded-full border-2 border-white"
+                                            src="https://ui-avatars.com/api/?name=Chen&background=random" alt="">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 团队动态/风险 -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-bold text-gray-800"><i
+                                    class="fas fa-shield-alt text-red-500 mr-2"></i>风险与动态</h3>
+                        </div>
+
+                        <ul class="space-y-4">
+                            <li class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <div
+                                        class="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center text-red-500">
+                                        <i class="fas fa-exclamation"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-gray-900">服务器带宽告警</p>
+                                    <p class="text-sm text-gray-500">监控系统检测到出口带宽占用超过 90%，可能影响 API 响应速度。</p>
+                                    <span class="text-xs text-gray-400 mt-1 block">10分钟前</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <div
+                                        class="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-500">
+                                        <i class="fas fa-check"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-gray-900">UI 设计稿已评审</p>
+                                    <p class="text-sm text-gray-500">设计师 Alice 更新了首页改版设计稿，等待开发确认。</p>
+                                    <span class="text-xs text-gray-400 mt-1 block">2小时前</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <div
+                                        class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-500">
+                                        <i class="fas fa-user-plus"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-gray-900">新成员入职</p>
+                                    <p class="text-sm text-gray-500">后端实习生 Bob 加入了“数据同步插件”项目组。</p>
+                                    <span class="text-xs text-gray-400 mt-1 block">昨天</span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports Section (Hidden by default) -->
+            <div id="reports-section" class="hidden-section">
+                <!-- Content truncated for brevity, same as before -->
+                <div class="mb-6 flex justify-between items-center">
+                    <h2 class="text-3xl font-bold text-gray-900">汇报中心 (Reports)</h2>
+                    <button
+                        class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition shadow-sm"
+                        onclick="generateWeeklyReport()">
+                        <i class="fas fa-magic mr-2"></i>一键生成周报
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- 左侧：日报输入 -->
+                    <div class="lg:col-span-1 space-y-6">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4"><i
+                                    class="fas fa-pen text-secondary mr-2"></i>今日日报 (Daily Log)</h3>
+                            <form id="daily-log-form">
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">今日产出 (Done)</label>
+                                    <textarea id="daily-done"
+                                        class="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm p-2 border"
+                                        rows="3" placeholder="- 完成了 X 功能开发&#10;- 修复了 Y Bug"></textarea>
+                                </div>
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">遇到问题 (Blockers)</label>
+                                    <textarea id="daily-blockers"
+                                        class="w-full border-gray-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 sm:text-sm p-2 border"
+                                        rows="2" placeholder="- Z 接口文档缺失"></textarea>
+                                </div>
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">明日计划 (Plan)</label>
+                                    <textarea id="daily-plan"
+                                        class="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm p-2 border"
+                                        rows="2" placeholder="- 开始 W 模块设计"></textarea>
+                                </div>
+                                <button type="button" onclick="submitDailyLog()"
+                                    class="w-full bg-secondary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-600 transition shadow-sm">
+                                    提交日报
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- 历史日报时间轴 -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4">本周记录</h3>
+                            <div id="daily-logs-container" class="relative pl-4 border-l-2 border-gray-200 space-y-6">
+                                <!-- 动态生成内容 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：周报预览 -->
+                    <div class="lg:col-span-2">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 h-full flex flex-col">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-bold text-gray-800"><i
+                                        class="fas fa-clipboard-list text-primary mr-2"></i>周报预览 (Weekly Report)</h3>
+                                <div class="space-x-2">
+                                    <button class="text-gray-400 hover:text-gray-600"><i class="fas fa-copy"></i>
+                                        复制</button>
+                                    <button class="text-gray-400 hover:text-gray-600"><i class="fas fa-envelope"></i>
+                                        发送</button>
+                                </div>
+                            </div>
+                            <textarea id="weekly-report-content"
+                                class="flex-1 w-full border-gray-200 rounded-md p-4 bg-gray-50 text-sm font-mono focus:ring-primary focus:border-primary border resize-none"
+                                placeholder="点击“一键生成周报”自动汇总..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SMART Goals Section -->
+            <div id="smart-section" class="hidden-section">
+                <div class="mb-6 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-3xl font-bold text-gray-900">目标管理 (SMART)</h2>
+                        <p class="text-gray-500 mt-1">聚焦核心目标，确保每一个目标都是具体且可衡量的。</p>
+                    </div>
+                    <button
+                        class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition shadow-sm">
+                        <i class="fas fa-plus mr-1"></i> 新增目标
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Goal Card Example 1 -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center">
+                                <span
+                                    class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold mr-3">Q2</span>
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-800">完成3个客户案例复盘</h3>
+                                    <p class="text-sm text-gray-500">截止日期: 2024-06-30</p>
+                                </div>
+                            </div>
+                            <span class="px-2 py-1 text-xs font-semibold rounded bg-green-100 text-green-800">进行中</span>
+                        </div>
+
+                        <div class="space-y-3 mb-6">
+                            <div class="flex items-start">
+                                <span class="text-xs font-bold text-gray-400 w-8 mt-0.5">S</span>
+                                <p class="text-sm text-gray-600 flex-1">针对Q1交付的Top3大客户项目，输出深度复盘报告。</p>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="text-xs font-bold text-gray-400 w-8 mt-0.5">M</span>
+                                <p class="text-sm text-gray-600 flex-1">输出3份PDF报告，每份不少于20页，包含数据对比。</p>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="text-xs font-bold text-gray-400 w-8 mt-0.5">A</span>
+                                <p class="text-sm text-gray-600 flex-1">已收集原始数据，需安排3天专注时间撰写。</p>
+                            </div>
+                        </div>
+
+                        <div class="w-full bg-gray-100 rounded-full h-2.5 mb-2">
+                            <div class="bg-blue-600 h-2.5 rounded-full" style="width: 33%"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-500">
+                            <span>当前进度: 1/3 (33%)</span>
+                            <span>剩余: 45天</span>
+                        </div>
+                    </div>
+
+                    <!-- Goal Card Example 2 -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center">
+                                <span
+                                    class="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold mr-3">Yr</span>
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-800">提升团队代码覆盖率至 80%</h3>
+                                    <p class="text-sm text-gray-500">截止日期: 2024-12-31</p>
+                                </div>
+                            </div>
+                            <span
+                                class="px-2 py-1 text-xs font-semibold rounded bg-yellow-100 text-yellow-800">规划中</span>
+                        </div>
+
+                        <div class="space-y-3 mb-6">
+                            <div class="flex items-start">
+                                <span class="text-xs font-bold text-gray-400 w-8 mt-0.5">S</span>
+                                <p class="text-sm text-gray-600 flex-1">为核心业务模块补充单元测试，接入SonarQube。</p>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="text-xs font-bold text-gray-400 w-8 mt-0.5">M</span>
+                                <p class="text-sm text-gray-600 flex-1">SonarQube 报告显示 Line Coverage > 80%。</p>
+                            </div>
+                        </div>
+
+                        <div class="w-full bg-gray-100 rounded-full h-2.5 mb-2">
+                            <div class="bg-purple-600 h-2.5 rounded-full" style="width: 10%"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-500">
+                            <span>当前进度: 10%</span>
+                            <span>剩余: 200天</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time & Energy Section -->
+            <div id="time-energy-section" class="hidden-section">
+                <div class="mb-6">
+                    <h2 class="text-3xl font-bold text-gray-900">时间与精力管理 (Time & Energy)</h2>
+                    <p class="text-gray-500 mt-1">顺应生物钟，在精力巅峰期处理高难度任务。</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Energy Map -->
+                    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-6"><i
+                                class="fas fa-battery-full text-secondary mr-2"></i>精力分布图 (Energy Map)</h3>
+
+                        <div class="relative h-64 border-l border-b border-gray-200 ml-4 mb-4">
+                            <!-- Y Axis Labels -->
+                            <div class="absolute -left-8 top-0 text-xs text-gray-400">High</div>
+                            <div class="absolute -left-8 top-1/2 text-xs text-gray-400">Med</div>
+                            <div class="absolute -left-8 bottom-0 text-xs text-gray-400">Low</div>
+
+                            <!-- Chart Bars (Simulated) -->
+                            <div
+                                class="absolute bottom-0 left-2 w-12 bg-green-100 hover:bg-green-200 transition-colors h-[90%] rounded-t flex flex-col justify-end items-center group">
+                                <span class="text-xs font-bold text-green-800 mb-1 hidden group-hover:block">创意</span>
+                            </div> <!-- 9-11am -->
+                            <div
+                                class="absolute bottom-0 left-16 w-12 bg-yellow-100 hover:bg-yellow-200 transition-colors h-[50%] rounded-t flex flex-col justify-end items-center group">
+                                <span class="text-xs font-bold text-yellow-800 mb-1 hidden group-hover:block">会议</span>
+                            </div> <!-- 11-1pm -->
+                            <div
+                                class="absolute bottom-0 left-30 w-12 bg-red-100 hover:bg-red-200 transition-colors h-[30%] rounded-t flex flex-col justify-end items-center group">
+                                <span class="text-xs font-bold text-red-800 mb-1 hidden group-hover:block">午休</span>
+                            </div> <!-- 1-2pm -->
+                            <div
+                                class="absolute bottom-0 left-44 w-12 bg-green-100 hover:bg-green-200 transition-colors h-[70%] rounded-t flex flex-col justify-end items-center group">
+                                <span class="text-xs font-bold text-green-800 mb-1 hidden group-hover:block">攻坚</span>
+                            </div> <!-- 2-4pm -->
+                            <div
+                                class="absolute bottom-0 left-58 w-12 bg-yellow-100 hover:bg-yellow-200 transition-colors h-[40%] rounded-t flex flex-col justify-end items-center group">
+                                <span class="text-xs font-bold text-yellow-800 mb-1 hidden group-hover:block">邮件</span>
+                            </div> <!-- 4-6pm -->
+
+                            <!-- X Axis Labels -->
+                            <div class="absolute -bottom-6 left-2 text-xs text-gray-500 w-12 text-center">09:00</div>
+                            <div class="absolute -bottom-6 left-16 text-xs text-gray-500 w-12 text-center">11:00</div>
+                            <div class="absolute -bottom-6 left-30 text-xs text-gray-500 w-12 text-center">13:00</div>
+                            <div class="absolute -bottom-6 left-44 text-xs text-gray-500 w-12 text-center">14:00</div>
+                            <div class="absolute -bottom-6 left-58 text-xs text-gray-500 w-12 text-center">16:00</div>
+                        </div>
+
+                        <div class="mt-8 grid grid-cols-2 gap-4">
+                            <div class="bg-green-50 p-3 rounded border border-green-100">
+                                <h4 class="text-xs font-bold text-green-800 uppercase mb-1">黄金时间 (09:00 - 11:00)</h4>
+                                <p class="text-sm text-gray-600">适合：深度思考、创意写作、核心代码开发。</p>
+                            </div>
+                            <div class="bg-yellow-50 p-3 rounded border border-yellow-100">
+                                <h4 class="text-xs font-bold text-yellow-800 uppercase mb-1">行政时间 (16:00 - 17:00)</h4>
+                                <p class="text-sm text-gray-600">适合：回复邮件、报销流程、整理文档。</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Time Log -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">今日时间开销</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="w-2 h-2 rounded-full bg-primary mr-2"></div>
+                                    <span class="text-sm text-gray-700">项目开发</span>
+                                </div>
+                                <span class="text-sm font-bold text-gray-900">3h 20m</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="w-2 h-2 rounded-full bg-yellow-400 mr-2"></div>
+                                    <span class="text-sm text-gray-700">会议沟通</span>
+                                </div>
+                                <span class="text-sm font-bold text-gray-900">1h 15m</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="w-2 h-2 rounded-full bg-red-400 mr-2"></div>
+                                    <span class="text-sm text-gray-700">碎片干扰</span>
+                                </div>
+                                <span class="text-sm font-bold text-gray-900">45m</span>
+                            </div>
+                        </div>
+                        <div class="mt-6 pt-4 border-t">
+                            <button
+                                class="w-full bg-gray-100 text-gray-700 py-2 rounded-md text-sm font-medium hover:bg-gray-200 transition">
+                                <i class="fas fa-play mr-1"></i> 开始新的番茄钟
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project Management Sections -->
+
+            <!-- 1. Scope & Schedule Section -->
+            <div id="project-scope-section" class="hidden-section">
+                <div class="mb-6">
+                    <h2 class="text-3xl font-bold text-gray-900">范围与进度 (Scope & Schedule)</h2>
+                    <p class="text-gray-500 mt-1">明确项目边界，可视化追踪关键路径与预算。</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- WBS (Work Breakdown Structure) -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
+                                class="fas fa-sitemap text-blue-500 mr-2"></i>WBS 工作分解 (电商系统开发)</h3>
+                        <div class="tree-structure text-sm">
+                            <ul class="space-y-2">
+                                <li class="font-bold text-gray-800"><i
+                                        class="fas fa-folder-open text-yellow-400 mr-2"></i>1.0 电商系统 V1.0</li>
+                                <ul class="pl-6 space-y-2 border-l border-gray-200 ml-2">
+                                    <li>
+                                        <div class="flex items-center">
+                                            <span class="w-4 border-t border-gray-200 mr-2"></span>
+                                            <i class="fas fa-folder text-blue-300 mr-2"></i>
+                                            <span class="font-medium text-gray-700">1.1 前端界面</span>
+                                        </div>
+                                        <ul class="pl-8 mt-1 space-y-1 text-gray-600">
+                                            <li class="flex items-center"><span
+                                                    class="w-2 h-2 rounded-full bg-green-400 mr-2"></span>首页/商品列表页
+                                                (Alice)</li>
+                                            <li class="flex items-center"><span
+                                                    class="w-2 h-2 rounded-full bg-gray-300 mr-2"></span>购物车/结算页
+                                                (Pending)</li>
+                                        </ul>
+                                    </li>
+                                    <li>
+                                        <div class="flex items-center">
+                                            <span class="w-4 border-t border-gray-200 mr-2"></span>
+                                            <i class="fas fa-folder text-blue-300 mr-2"></i>
+                                            <span class="font-medium text-gray-700">1.2 后端逻辑</span>
+                                        </div>
+                                        <ul class="pl-8 mt-1 space-y-1 text-gray-600">
+                                            <li class="flex items-center"><span
+                                                    class="w-2 h-2 rounded-full bg-green-400 mr-2"></span>用户认证 API (Bob)
+                                            </li>
+                                            <li class="flex items-center"><span
+                                                    class="w-2 h-2 rounded-full bg-yellow-400 mr-2"></span>订单状态机 (Bob)
+                                            </li>
+                                        </ul>
+                                    </li>
+                                    <li>
+                                        <div class="flex items-center">
+                                            <span class="w-4 border-t border-gray-200 mr-2"></span>
+                                            <i class="fas fa-folder text-blue-300 mr-2"></i>
+                                            <span class="font-medium text-gray-700">1.3 数据库设计</span>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Progress & Budget -->
+                    <div class="space-y-6">
+                        <!-- Burndown Chart Placeholder -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-bold text-gray-800"><i
+                                        class="fas fa-chart-area text-purple-500 mr-2"></i>燃尽图 (Burndown)</h3>
+                                <span class="text-xs text-gray-500">Sprint 4 (4/1 - 4/14)</span>
+                            </div>
+                            <div
+                                class="h-48 bg-gray-50 rounded flex items-center justify-center text-gray-400 border border-dashed border-gray-200 relative">
+                                <!-- Simple simulated chart using CSS/HTML for visual -->
+                                <div
+                                    class="absolute bottom-0 left-0 right-0 top-0 p-4 flex items-end justify-between px-8">
+                                    <div class="h-full w-0.5 bg-gray-200 absolute left-8 top-0"></div>
+                                    <div class="w-full h-0.5 bg-gray-200 absolute left-8 bottom-4"></div>
+
+                                    <!-- Points -->
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full mb-[80%] relative z-10"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full mb-[60%] relative z-10"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full mb-[50%] relative z-10"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full mb-[20%] relative z-10"></div>
+                                    <div class="w-2 h-2 bg-green-500 rounded-full mb-[10%] relative z-10"></div>
+
+                                    <!-- Trend Line (SVG) -->
+                                    <svg class="absolute inset-0 h-full w-full pointer-events-none"
+                                        preserveAspectRatio="none">
+                                        <polyline points="32,30 100,60 180,75 260,120 340,135" fill="none"
+                                            stroke="#A78BFA" stroke-width="2" />
+                                        <line x1="32" y1="30" x2="340" y2="150" stroke="#E5E7EB" stroke-width="1"
+                                            stroke-dasharray="4" />
+                                    </svg>
+                                </div>
+                                <span class="absolute top-2 right-4 text-xs text-green-600 font-bold">进度正常</span>
+                            </div>
+                        </div>
+
+                        <!-- Budget Monitor -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4"><i
+                                    class="fas fa-coins text-yellow-500 mr-2"></i>预算监控 (Budget)</h3>
+                            <div class="mb-2 flex justify-between text-sm">
+                                <span class="text-gray-600">总预算: ¥500,000</span>
+                                <span class="text-gray-900 font-bold">已用: ¥300,000 (60%)</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-4 mb-2 overflow-hidden">
+                                <div class="bg-yellow-500 h-4 rounded-full flex items-center justify-center text-[10px] text-white font-bold"
+                                    style="width: 60%">60%</div>
+                            </div>
+                            <p class="text-xs text-red-500 mt-2"><i
+                                    class="fas fa-exclamation-circle mr-1"></i>预警：剩余40%需重点控制采购成本（服务器集群扩容）。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Quality & Resources Section -->
+            <div id="project-quality-section" class="hidden-section">
+                <div class="mb-6">
+                    <h2 class="text-3xl font-bold text-gray-900">质量与资源 (Quality & Resources)</h2>
+                    <p class="text-gray-500 mt-1">定义交付标准，优化资源配置。</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Quality Standards -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
+                                class="fas fa-clipboard-check text-green-500 mr-2"></i>质量验收标准 (DoD)</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-start p-3 bg-green-50 rounded border border-green-100">
+                                <i class="fas fa-bug text-green-600 mt-1 mr-3"></i>
+                                <div>
+                                    <h4 class="text-sm font-bold text-green-900">软件缺陷率</h4>
+                                    <p class="text-sm text-green-800">核心流程 Bug 率低于 <span
+                                            class="font-bold">0.1%</span>（每千行代码）。P0级 Bug 必须归零。</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start p-3 bg-blue-50 rounded border border-blue-100">
+                                <i class="fas fa-smile text-blue-600 mt-1 mr-3"></i>
+                                <div>
+                                    <h4 class="text-sm font-bold text-blue-900">用户满意度 (CSAT)</h4>
+                                    <p class="text-sm text-blue-800">UAT 验收评分需达到 <span
+                                            class="font-bold">4.8分</span>（满分5分）。</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start p-3 bg-purple-50 rounded border border-purple-100">
+                                <i class="fas fa-tachometer-alt text-purple-600 mt-1 mr-3"></i>
+                                <div>
+                                    <h4 class="text-sm font-bold text-purple-900">性能指标</h4>
+                                    <p class="text-sm text-purple-800">API 响应时间 < 200ms (99th percentile)。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Resource Allocation Matrix -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
+                                class="fas fa-users-cog text-indigo-500 mr-2"></i>资源分配矩阵</h3>
+                        <table class="min-w-full text-sm">
+                            <thead>
+                                <tr class="bg-gray-50 border-b">
+                                    <th class="text-left py-2 px-3 text-gray-500 font-medium">成员</th>
+                                    <th class="text-left py-2 px-3 text-gray-500 font-medium">角色</th>
+                                    <th class="text-left py-2 px-3 text-gray-500 font-medium">当前负荷</th>
+                                    <th class="text-left py-2 px-3 text-gray-500 font-medium">重点任务</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <tr>
+                                    <td class="py-3 px-3 flex items-center">
+                                        <img src="https://ui-avatars.com/api/?name=Chen&background=random"
+                                            class="w-6 h-6 rounded-full mr-2">
+                                        <span class="font-bold text-gray-800">Chen</span>
+                                    </td>
+                                    <td class="text-gray-600">Tech Lead</td>
+                                    <td><span class="px-2 py-0.5 rounded bg-red-100 text-red-800 text-xs">95%
+                                            (High)</span></td>
+                                    <td class="text-gray-600">架构设计、核心鉴权</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-3 flex items-center">
+                                        <img src="https://ui-avatars.com/api/?name=Alice&background=random"
+                                            class="w-6 h-6 rounded-full mr-2">
+                                        <span class="font-bold text-gray-800">Alice</span>
+                                    </td>
+                                    <td class="text-gray-600">Frontend</td>
+                                    <td><span class="px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs">70%
+                                            (OK)</span></td>
+                                    <td class="text-gray-600">商品列表页</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-3 flex items-center">
+                                        <img src="https://ui-avatars.com/api/?name=Bob&background=random"
+                                            class="w-6 h-6 rounded-full mr-2">
+                                        <span class="font-bold text-gray-800">Bob</span>
+                                    </td>
+                                    <td class="text-gray-600">Backend</td>
+                                    <td><span class="px-2 py-0.5 rounded bg-yellow-100 text-yellow-800 text-xs">85%
+                                            (Busy)</span></td>
+                                    <td class="text-gray-600">订单接口</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="mt-4 p-3 bg-yellow-50 rounded text-xs text-yellow-800 border border-yellow-100">
+                            <strong>策略调整：</strong> Chen 的负荷过高，建议将“非核心模块代码Review”任务指派给 Bob。
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Risk & Change Section -->
+            <div id="project-risk-section" class="hidden-section">
+                <div class="mb-6">
+                    <h2 class="text-3xl font-bold text-gray-900">风险与变更 (Risk & Change)</h2>
+                    <p class="text-gray-500 mt-1">主动管理潜在风险，规范化需求变更流程。</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Risk Register -->
+                    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
+                                class="fas fa-shield-alt text-red-500 mr-2"></i>风险登记册 (Risk Register)</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-sm">
+                                <thead>
+                                    <tr class="bg-gray-50 border-b">
+                                        <th class="text-left py-2 px-4 text-gray-500 font-medium">风险描述</th>
+                                        <th class="text-left py-2 px-4 text-gray-500 font-medium">概率/影响</th>
+                                        <th class="text-left py-2 px-4 text-gray-500 font-medium">应对策略 (Plan B)</th>
+                                        <th class="text-left py-2 px-4 text-gray-500 font-medium">状态</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    <tr>
+                                        <td class="py-3 px-4">
+                                            <p class="font-bold text-gray-800">供应商延迟交货</p>
+                                            <p class="text-xs text-gray-500">服务器硬件可能因物流延期</p>
+                                        </td>
+                                        <td class="py-3 px-4">
+                                            <span class="block text-red-600 font-bold">High (30%)</span>
+                                            <span class="text-xs text-gray-500">影响上线时间 1周</span>
+                                        </td>
+                                        <td class="py-3 px-4 text-gray-700">
+                                            启动备选方案：暂时租用 AWS 云服务器过渡。
+                                        </td>
+                                        <td class="py-3 px-4">
+                                            <span class="px-2 py-1 rounded bg-red-100 text-red-800 text-xs">监控中</span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-3 px-4">
+                                            <p class="font-bold text-gray-800">UI 设计稿变更</p>
+                                            <p class="text-xs text-gray-500">首页布局未最终确认</p>
+                                        </td>
+                                        <td class="py-3 px-4">
+                                            <span class="block text-yellow-600 font-bold">Med (50%)</span>
+                                            <span class="text-xs text-gray-500">影响前端开发 2天</span>
+                                        </td>
+                                        <td class="py-3 px-4 text-gray-700">
+                                            优先开发后端 API，等待 UI 冻结。
+                                        </td>
+                                        <td class="py-3 px-4">
+                                            <span
+                                                class="px-2 py-1 rounded bg-green-100 text-green-800 text-xs">已规避</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Issue Escalation Mechanism -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
+                                class="fas fa-level-up-alt text-orange-500 mr-2"></i>问题升级机制</h3>
+                        <div class="relative pl-4 border-l-2 border-gray-200 space-y-6">
+                            <div class="relative">
+                                <div
+                                    class="absolute -left-5 top-1 h-3 w-3 rounded-full bg-green-500 border-2 border-white">
+                                </div>
+                                <h4 class="text-sm font-bold text-gray-800">Level 1: 项目组内解决</h4>
+                                <p class="text-xs text-gray-500">日常技术问题、非关键路径延误。</p>
+                            </div>
+                            <div class="relative">
+                                <div
+                                    class="absolute -left-5 top-1 h-3 w-3 rounded-full bg-yellow-500 border-2 border-white">
+                                </div>
+                                <h4 class="text-sm font-bold text-gray-800">Level 2: 上报技术总监 (24h 无解)</h4>
+                                <p class="text-xs text-gray-500">技术难题阻塞进度超过 24小时，或涉及跨部门协调。</p>
+                            </div>
+                            <div class="relative">
+                                <div
+                                    class="absolute -left-5 top-1 h-3 w-3 rounded-full bg-red-500 border-2 border-white">
+                                </div>
+                                <h4 class="text-sm font-bold text-gray-800">Level 3: 上报 CTO/CEO</h4>
+                                <p class="text-xs text-gray-500">重大风险（如预算超支 >20%、核心成员离职）。</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Change Control Process -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
+                                class="fas fa-exchange-alt text-blue-500 mr-2"></i>变更管理流程</h3>
+                        <div class="flex items-center justify-between text-center text-xs">
+                            <div class="flex-1">
+                                <div
+                                    class="w-10 h-10 mx-auto bg-blue-50 rounded-full flex items-center justify-center text-blue-600 mb-2">
+                                    <i class="fas fa-file-alt"></i>
+                                </div>
+                                <p class="font-medium">1. 提交申请</p>
+                            </div>
+                            <div class="text-gray-300"><i class="fas fa-arrow-right"></i></div>
+                            <div class="flex-1">
+                                <div
+                                    class="w-10 h-10 mx-auto bg-yellow-50 rounded-full flex items-center justify-center text-yellow-600 mb-2">
+                                    <i class="fas fa-balance-scale"></i>
+                                </div>
+                                <p class="font-medium">2. 评估影响</p>
+                                <p class="text-gray-400 scale-75">成本/进度/质量</p>
+                            </div>
+                            <div class="text-gray-300"><i class="fas fa-arrow-right"></i></div>
+                            <div class="flex-1">
+                                <div
+                                    class="w-10 h-10 mx-auto bg-green-50 rounded-full flex items-center justify-center text-green-600 mb-2">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <p class="font-medium">3. 审批执行</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 bg-gray-50 p-3 rounded border border-gray-100 text-xs text-gray-600">
+                            <strong>最新变更：</strong> [2024-04-01] 增加“微信一键登录”功能。评估结果：工期增加 2天，已批准。
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Review & Process Section (End of new Project sections) -->
+            <div id="review-section" class="hidden-section">
+                <div class="mb-6">
+                    <h2 class="text-3xl font-bold text-gray-900">流程与复盘 (Process & Review)</h2>
+                    <p class="text-gray-500 mt-1">标准化高频动作，定期回顾目标偏差。</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Task Breakdown Example -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
+                                class="fas fa-stream text-primary mr-2"></i>任务拆解 (Work Breakdown)</h3>
+                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="font-bold text-gray-800">示例：撰写年度报告</span>
+                                <span class="text-xs text-gray-500">Total: 4h</span>
+                            </div>
+                            <div class="space-y-3 relative">
+                                <!-- Connecting Line -->
+                                <div class="absolute left-2.5 top-2 bottom-2 w-0.5 bg-gray-300"></div>
+
+                                <div class="flex items-center relative z-10">
+                                    <div
+                                        class="w-5 h-5 rounded-full bg-green-500 border-2 border-white shadow-sm flex items-center justify-center text-white text-xs mr-3">
+                                        <i class="fas fa-check"></i>
+                                    </div>
+                                    <div class="flex-1 bg-white p-2 rounded shadow-sm border border-gray-100">
+                                        <p class="text-sm font-medium text-gray-800">1. 收集数据</p>
+                                        <p class="text-xs text-gray-500">导出 Jira、GitLab 统计数据</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center relative z-10">
+                                    <div
+                                        class="w-5 h-5 rounded-full bg-white border-2 border-primary shadow-sm flex items-center justify-center text-primary text-xs mr-3">
+                                        2</div>
+                                    <div class="flex-1 bg-white p-2 rounded shadow-sm border border-gray-100">
+                                        <p class="text-sm font-medium text-gray-800">2. 搭建框架</p>
+                                        <p class="text-xs text-gray-500">确认目录结构和核心亮点</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center relative z-10">
+                                    <div
+                                        class="w-5 h-5 rounded-full bg-white border-2 border-gray-300 shadow-sm flex items-center justify-center text-gray-400 text-xs mr-3">
+                                        3</div>
+                                    <div class="flex-1 bg-white p-2 rounded shadow-sm border border-gray-100">
+                                        <p class="text-sm font-medium text-gray-800">3. 填充内容</p>
+                                        <p class="text-xs text-gray-500">撰写正文，插入图表</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SOP Library -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
+                                class="fas fa-book text-purple-500 mr-2"></i>SOP 模板库</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <button
+                                class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:border-primary hover:bg-blue-50 transition group">
+                                <i class="fas fa-file-invoice text-gray-400 text-2xl mb-2 group-hover:text-primary"></i>
+                                <span class="text-sm font-medium text-gray-700 group-hover:text-primary">周报模板</span>
+                            </button>
+                            <button
+                                class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:border-primary hover:bg-blue-50 transition group">
+                                <i class="fas fa-comments text-gray-400 text-2xl mb-2 group-hover:text-primary"></i>
+                                <span class="text-sm font-medium text-gray-700 group-hover:text-primary">客户沟通话术</span>
+                            </button>
+                            <button
+                                class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:border-primary hover:bg-blue-50 transition group">
+                                <i class="fas fa-code-branch text-gray-400 text-2xl mb-2 group-hover:text-primary"></i>
+                                <span class="text-sm font-medium text-gray-700 group-hover:text-primary">Code Review
+                                    清单</span>
+                            </button>
+                            <button
+                                class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg border-dashed hover:border-primary hover:bg-blue-50 transition group">
+                                <i class="fas fa-plus text-gray-300 text-2xl mb-2 group-hover:text-primary"></i>
+                                <span class="text-sm font-medium text-gray-500 group-hover:text-primary">新增模板</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Review Dashboard -->
+                    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
+                                class="fas fa-chart-bar text-indigo-500 mr-2"></i>月度复盘 (Monthly Review)</h3>
+                        <div class="bg-indigo-50 rounded-lg p-4 mb-4">
+                            <h4 class="font-bold text-indigo-900 mb-2">上月复盘摘要 (3月)</h4>
+                            <ul class="list-disc list-inside text-sm text-indigo-800 space-y-1">
+                                <li>目标完成率：80% (偏差原因：突发项目占用30%时间)</li>
+                                <li>经验沉淀：跨部门沟通需提前2天同步需求文档，避免等待。</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Team Management Sections -->
+
+            <!-- 1. Goal Alignment (OKR) -->
+            <div id="team-okr-section" class="hidden-section">
+                <div class="mb-6">
+                    <h2 class="text-3xl font-bold text-gray-900">目标对齐 (Goal Alignment)</h2>
+                    <p class="text-gray-500 mt-1">将组织目标拆解为团队 KPI，确保上下同欲。</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-6"><i
+                            class="fas fa-bullseye text-red-500 mr-2"></i>OKR 拆解树 (FY2024)</h3>
+                    <div class="space-y-4">
+                        <!-- Org Level -->
+                        <div class="border-l-4 border-red-500 bg-red-50 p-4 rounded-r-lg">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <span class="text-xs font-bold text-red-600 uppercase tracking-wide">Company
+                                        Goal</span>
+                                    <h4 class="text-lg font-bold text-gray-900">年度营收突破 1000万</h4>
+                                </div>
+                                <span class="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded">O1</span>
+                            </div>
+                        </div>
+
+                        <!-- Team Level -->
+                        <div class="ml-8 space-y-4 border-l-2 border-gray-200 pl-6">
+                            <div class="bg-white border border-gray-200 p-4 rounded-lg shadow-sm relative">
+                                <div class="absolute -left-6 top-1/2 w-6 h-0.5 bg-gray-200"></div>
+                                <div class="flex justify-between items-start mb-2">
+                                    <div>
+                                        <span class="text-xs font-bold text-blue-600 uppercase tracking-wide">Team A
+                                            (Product)</span>
+                                        <h4 class="font-bold text-gray-800">完成核心产品线 2.0 迭代，支撑 350万 营收</h4>
+                                    </div>
+                                    <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">KR
+                                        1</span>
+                                </div>
+                                <div class="w-full bg-gray-100 rounded-full h-2">
+                                    <div class="bg-blue-500 h-2 rounded-full" style="width: 60%"></div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white border border-gray-200 p-4 rounded-lg shadow-sm relative">
+                                <div class="absolute -left-6 top-1/2 w-6 h-0.5 bg-gray-200"></div>
+                                <div class="flex justify-between items-start mb-2">
+                                    <div>
+                                        <span class="text-xs font-bold text-green-600 uppercase tracking-wide">Team B
+                                            (Sales)</span>
+                                        <h4 class="font-bold text-gray-800">拓展 50 家大客户，实现 350万 签约</h4>
+                                    </div>
+                                    <span class="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">KR
+                                        2</span>
+                                </div>
+                                <div class="w-full bg-gray-100 rounded-full h-2">
+                                    <div class="bg-green-500 h-2 rounded-full" style="width: 40%"></div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white border border-gray-200 p-4 rounded-lg shadow-sm relative">
+                                <div class="absolute -left-6 top-1/2 w-6 h-0.5 bg-gray-200"></div>
+                                <div class="flex justify-between items-start mb-2">
+                                    <div>
+                                        <span class="text-xs font-bold text-purple-600 uppercase tracking-wide">Team C
+                                            (Service)</span>
+                                        <h4 class="font-bold text-gray-800">客户续费率提升至 90%，贡献 300万 营收</h4>
+                                    </div>
+                                    <span class="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">KR
+                                        3</span>
+                                </div>
+                                <div class="w-full bg-gray-100 rounded-full h-2">
+                                    <div class="bg-purple-500 h-2 rounded-full" style="width: 85%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Roles & Responsibilities (RACI) -->
+            <div id="team-raci-section" class="hidden-section">
+                <div class="mb-6">
+                    <h2 class="text-3xl font-bold text-gray-900">角色权责 (RACI Matrix)</h2>
+                    <p class="text-gray-500 mt-1">明确岗位职责，拒绝权责模糊。</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <thead>
+                                <tr class="bg-gray-50 border-b">
+                                    <th class="text-left py-3 px-4 font-bold text-gray-700">关键活动 (Activity)</th>
+                                    <th class="text-center py-3 px-4 font-bold text-gray-700">产品经理 (PM)</th>
+                                    <th class="text-center py-3 px-4 font-bold text-gray-700">开发负责人 (Tech Lead)</th>
+                                    <th class="text-center py-3 px-4 font-bold text-gray-700">开发人员 (Dev)</th>
+                                    <th class="text-center py-3 px-4 font-bold text-gray-700">测试人员 (QA)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <tr>
+                                    <td class="py-3 px-4 font-medium text-gray-800">1. 需求变更审批</td>
+                                    <td class="text-center py-3 px-4"><span
+                                            class="bg-red-100 text-red-800 px-2 py-1 rounded font-bold">A (批准)</span>
+                                    </td>
+                                    <td class="text-center py-3 px-4"><span
+                                            class="bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold">R (负责)</span>
+                                    </td>
+                                    <td class="text-center py-3 px-4 text-gray-400">I (知会)</td>
+                                    <td class="text-center py-3 px-4 text-gray-400">I (知会)</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4 font-medium text-gray-800">2. 技术方案设计</td>
+                                    <td class="text-center py-3 px-4"><span
+                                            class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded font-bold">C
+                                            (咨询)</span></td>
+                                    <td class="text-center py-3 px-4"><span
+                                            class="bg-red-100 text-red-800 px-2 py-1 rounded font-bold">A (批准)</span>
+                                    </td>
+                                    <td class="text-center py-3 px-4"><span
+                                            class="bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold">R (负责)</span>
+                                    </td>
+                                    <td class="text-center py-3 px-4 text-gray-400">-</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4 font-medium text-gray-800">3. 代码编写与单元测试</td>
+                                    <td class="text-center py-3 px-4 text-gray-400">-</td>
+                                    <td class="text-center py-3 px-4"><span
+                                            class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded font-bold">C
+                                            (咨询)</span></td>
+                                    <td class="text-center py-3 px-4"><span
+                                            class="bg-red-100 text-red-800 px-2 py-1 rounded font-bold">R/A</span></td>
+                                    <td class="text-center py-3 px-4 text-gray-400">-</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4 font-medium text-gray-800">4. 上线发布</td>
+                                    <td class="text-center py-3 px-4"><span
+                                            class="bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold">I (知会)</span>
+                                    </td>
+                                    <td class="text-center py-3 px-4"><span
+                                            class="bg-red-100 text-red-800 px-2 py-1 rounded font-bold">A (批准)</span>
+                                    </td>
+                                    <td class="text-center py-3 px-4"><span
+                                            class="bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold">R (负责)</span>
+                                    </td>
+                                    <td class="text-center py-3 px-4"><span
+                                            class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded font-bold">C
+                                            (咨询)</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4 p-3 bg-gray-50 text-xs text-gray-500 rounded">
+                        <p><strong>R (Responsible):</strong> 执行人，负责具体干活。</p>
+                        <p><strong>A (Accountable):</strong> 负责人，对结果负最终责任（拥有否决权）。</p>
+                        <p><strong>C (Consulted):</strong> 咨询人，执行前需征求意见。</p>
+                        <p><strong>I (Informed):</strong> 知会人，结果出来后告知即可。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Communication & Sync -->
+            <div id="team-sync-section" class="hidden-section">
+                <div class="mb-6">
+                    <h2 class="text-3xl font-bold text-gray-900">沟通协作 (Sync Mechanisms)</h2>
+                    <p class="text-gray-500 mt-1">建立分层沟通机制，统一协作语言。</p>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Meeting Rhythm -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
+                                class="far fa-clock text-yellow-500 mr-2"></i>会议节奏 (Rhythm)</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-start p-3 bg-yellow-50 rounded-lg border border-yellow-100">
+                                <div class="bg-yellow-500 text-white rounded px-2 py-1 text-xs font-bold mr-3 mt-0.5">每日
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-gray-800 text-sm">每日站会 (Daily Standup)</h4>
+                                    <p class="text-xs text-gray-600 mt-1">⏰ 10:00 - 10:15 (15min)</p>
+                                    <p class="text-xs text-gray-500 mt-1">同步昨日进度、今日计划、遇到的阻碍。</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                <div class="bg-blue-500 text-white rounded px-2 py-1 text-xs font-bold mr-3 mt-0.5">每周
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-gray-800 text-sm">周复盘会 (Weekly Review)</h4>
+                                    <p class="text-xs text-gray-600 mt-1">⏰ 周五 16:00 - 17:00 (1h)</p>
+                                    <p class="text-xs text-gray-500 mt-1">演示产品增量，总结本周问题，制定下周计划。</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start p-3 bg-purple-50 rounded-lg border border-purple-100">
+                                <div class="bg-purple-500 text-white rounded px-2 py-1 text-xs font-bold mr-3 mt-0.5">每月
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-gray-800 text-sm">月度战略会 (Monthly Strategy)</h4>
+                                    <p class="text-xs text-gray-600 mt-1">⏰ 月末最后一天 (2h)</p>
+                                    <p class="text-xs text-gray-500 mt-1">对齐公司大方向，调整 KPI/OKR，团建活动。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tools -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
+                                class="fas fa-tools text-gray-500 mr-2"></i>协作工具规范</h3>
+                        <div class="space-y-3">
+                            <div
+                                class="flex items-center justify-between p-3 border border-gray-200 rounded hover:bg-gray-50 transition">
+                                <div class="flex items-center">
+                                    <i class="fas fa-file-alt text-blue-500 w-8 text-xl"></i>
+                                    <div>
+                                        <p class="font-bold text-sm text-gray-800">飞书文档 (Lark)</p>
+                                        <p class="text-xs text-gray-500">知识库、PRD、会议纪要</p>
+                                    </div>
+                                </div>
+                                <i class="fas fa-check text-green-500"></i>
+                            </div>
+                            <div
+                                class="flex items-center justify-between p-3 border border-gray-200 rounded hover:bg-gray-50 transition">
+                                <div class="flex items-center">
+                                    <i class="fas fa-comments text-blue-600 w-8 text-xl"></i>
+                                    <div>
+                                        <p class="font-bold text-sm text-gray-800">企业微信 (WeCom)</p>
+                                        <p class="text-xs text-gray-500">即时通讯、审批流、考勤</p>
+                                    </div>
+                                </div>
+                                <i class="fas fa-check text-green-500"></i>
+                            </div>
+                            <div
+                                class="flex items-center justify-between p-3 border border-gray-200 rounded hover:bg-gray-50 transition">
+                                <div class="flex items-center">
+                                    <i class="fab fa-jira text-blue-400 w-8 text-xl"></i>
+                                    <div>
+                                        <p class="font-bold text-sm text-gray-800">Jira / PingCode</p>
+                                        <p class="text-xs text-gray-500">任务跟踪、Bug 管理</p>
+                                    </div>
+                                </div>
+                                <i class="fas fa-check text-green-500"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Performance & Growth -->
+            <div id="team-growth-section" class="hidden-section">
+                <div class="mb-6">
+                    <h2 class="text-3xl font-bold text-gray-900">绩效与发展 (Performance & Growth)</h2>
+                    <p class="text-gray-500 mt-1">关注员工成长，采用“行为+影响”反馈模式。</p>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Feedback Record -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
+                                class="fas fa-comment-dots text-green-500 mr-2"></i>绩效反馈记录</h3>
+                        <div class="bg-green-50 border border-green-100 rounded-lg p-4 mb-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="text-xs font-bold text-green-800 bg-green-200 px-2 py-0.5 rounded">正面反馈
+                                    (Positive)</span>
+                                <span class="text-xs text-gray-500">2024-05-20</span>
+                            </div>
+                            <p class="text-sm text-gray-800 mb-2"><strong>对象：</strong> Alice (前端)</p>
+                            <div class="space-y-2 text-sm">
+                                <p><span class="font-bold text-green-700">行为 (Behavior):</span> 上周你主动协助 Bob
+                                    解决了认证模块的跨域问题。</p>
+                                <p><span class="font-bold text-green-700">影响 (Impact):</span> 这使得后端 API 联调提前 1
+                                    天完成，保证了项目按时交付。</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-red-50 border border-red-100 rounded-lg p-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="text-xs font-bold text-red-800 bg-red-200 px-2 py-0.5 rounded">改进建议
+                                    (Improvement)</span>
+                                <span class="text-xs text-gray-500">2024-05-18</span>
+                            </div>
+                            <p class="text-sm text-gray-800 mb-2"><strong>对象：</strong> Charlie (实习生)</p>
+                            <div class="space-y-2 text-sm">
+                                <p><span class="font-bold text-red-700">行为 (Behavior):</span> 提交代码前未在本地运行完整的测试套件。</p>
+                                <p><span class="font-bold text-red-700">影响 (Impact):</span> 导致 CI 流水线失败，阻塞了其他同事的合并请求约 2
+                                    小时。</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Development Plan -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
+                                class="fas fa-graduation-cap text-indigo-500 mr-2"></i>员工发展计划 (IDP)</h3>
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <div class="flex items-center mb-4">
+                                <img src="https://ui-avatars.com/api/?name=David&background=random"
+                                    class="w-10 h-10 rounded-full mr-3">
+                                <div>
+                                    <h4 class="font-bold text-gray-800">David (新入职后端)</h4>
+                                    <p class="text-xs text-gray-500">导师: Chen Xunlin</p>
+                                </div>
+                            </div>
+                            <div class="space-y-4">
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span class="font-bold text-gray-700">目标 1: 掌握核心业务流程</span>
+                                        <span class="text-blue-600">进行中 (30%)</span>
+                                    </div>
+                                    <div class="w-full bg-gray-100 rounded-full h-1.5">
+                                        <div class="bg-blue-500 h-1.5 rounded-full" style="width: 30%"></div>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1">期限: 3个月内 | 关键动作: 独立完成 3 个核心模块的需求开发。</p>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span class="font-bold text-gray-700">目标 2: 熟悉微服务架构</span>
+                                        <span class="text-gray-400">待启动</span>
+                                    </div>
+                                    <div class="w-full bg-gray-100 rounded-full h-1.5">
+                                        <div class="bg-gray-300 h-1.5 rounded-full" style="width: 0%"></div>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1">期限: 6个月内 | 关键动作: 阅读架构文档，参与 1 次架构评审。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- 引入业务逻辑 -->
+    <script src="js/script.js"></script>
+</body>
+
+</html>
