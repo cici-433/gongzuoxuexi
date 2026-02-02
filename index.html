@@ -187,7 +187,8 @@
                 <div class="mb-8 flex justify-between items-end">
                     <div>
                         <h2 class="text-3xl font-bold text-gray-900">下午好，Xunlin 👋</h2>
-                        <p class="text-gray-500 mt-1">今日聚焦：完成 <span class="text-primary font-semibold">3</span>
+                        <p class="text-gray-500 mt-1">今日聚焦：完成 <span id="dashboard-focus-count"
+                                class="text-primary font-semibold">0</span>
                             个高优先级任务，当前状态 <span
                                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">精力充沛</span>
                         </p>
@@ -195,9 +196,10 @@
                     <div class="text-right">
                         <p class="text-sm text-gray-500">本周目标完成率</p>
                         <div class="flex items-center justify-end">
-                            <span class="text-2xl font-bold text-gray-900 mr-2">75%</span>
+                            <span id="dashboard-completion-rate" class="text-2xl font-bold text-gray-900 mr-2">0%</span>
                             <div class="w-24 bg-gray-200 rounded-full h-2.5">
-                                <div class="bg-primary h-2.5 rounded-full" style="width: 75%"></div>
+                                <div id="dashboard-completion-bar" class="bg-primary h-2.5 rounded-full"
+                                    style="width: 0%"></div>
                             </div>
                         </div>
                     </div>
@@ -211,76 +213,60 @@
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-lg font-bold text-gray-800"><i
                                     class="fas fa-th-large text-primary mr-2"></i>任务矩阵 (Eisenhower Matrix)</h3>
-                            <span class="text-xs text-gray-400">基于重要/紧急维度</span>
+                            <div class="flex space-x-2">
+                                <select id="new-task-quadrant"
+                                    class="text-xs border-gray-300 rounded focus:ring-primary focus:border-primary">
+                                    <option value="1">重要且紧急</option>
+                                    <option value="2">重要不紧急</option>
+                                    <option value="3">紧急不重要</option>
+                                    <option value="4">不重要不紧急</option>
+                                </select>
+                                <input type="text" id="new-task-input" placeholder="添加新任务..."
+                                    class="text-xs border-gray-300 rounded focus:ring-primary focus:border-primary w-40">
+                                <button onclick="addTaskFromInput()"
+                                    class="bg-primary text-white px-2 py-1 rounded text-xs hover:bg-indigo-700 transition">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <div class="quadrant-grid">
                             <!-- 第一象限：重要且紧急 -->
-                            <div class="bg-red-50 rounded-lg p-4 border border-red-100 relative group">
+                            <div
+                                class="bg-red-50 rounded-lg p-4 border border-red-100 relative group h-64 overflow-y-auto">
                                 <div class="absolute top-2 right-2 text-red-200 text-4xl font-bold opacity-20">1</div>
                                 <h4 class="text-red-800 font-bold text-sm mb-3 uppercase">重要且紧急 (Do Now)</h4>
-                                <ul class="space-y-2">
-                                    <li class="flex items-start">
-                                        <input type="checkbox"
-                                            class="mt-1 mr-2 text-red-600 focus:ring-red-500 rounded border-gray-300">
-                                        <span class="text-sm text-gray-700">修复线上支付接口 502 错误</span>
-                                    </li>
-                                    <li class="flex items-start">
-                                        <input type="checkbox"
-                                            class="mt-1 mr-2 text-red-600 focus:ring-red-500 rounded border-gray-300">
-                                        <span class="text-sm text-gray-700">提交 Q2 预算审批</span>
-                                    </li>
+                                <ul id="quadrant-1-list" class="space-y-2">
+                                    <!-- Dynamic Tasks -->
                                 </ul>
                             </div>
 
                             <!-- 第二象限：重要不紧急 -->
-                            <div class="bg-blue-50 rounded-lg p-4 border border-blue-100 relative">
+                            <div class="bg-blue-50 rounded-lg p-4 border border-blue-100 relative h-64 overflow-y-auto">
                                 <div class="absolute top-2 right-2 text-blue-200 text-4xl font-bold opacity-20">2</div>
                                 <h4 class="text-blue-800 font-bold text-sm mb-3 uppercase">重要不紧急 (Schedule)</h4>
-                                <ul class="space-y-2">
-                                    <li class="flex items-start">
-                                        <input type="checkbox"
-                                            class="mt-1 mr-2 text-blue-600 focus:ring-blue-500 rounded border-gray-300">
-                                        <span class="text-sm text-gray-700">个人网站架构重构设计</span>
-                                    </li>
-                                    <li class="flex items-start">
-                                        <input type="checkbox"
-                                            class="mt-1 mr-2 text-blue-600 focus:ring-blue-500 rounded border-gray-300">
-                                        <span class="text-sm text-gray-700">学习 React Server Components</span>
-                                    </li>
-                                    <li class="flex items-start">
-                                        <input type="checkbox"
-                                            class="mt-1 mr-2 text-blue-600 focus:ring-blue-500 rounded border-gray-300">
-                                        <span class="text-sm text-gray-700">制定下季度团队 OKR</span>
-                                    </li>
+                                <ul id="quadrant-2-list" class="space-y-2">
+                                    <!-- Dynamic Tasks -->
                                 </ul>
                             </div>
 
                             <!-- 第三象限：紧急不重要 -->
-                            <div class="bg-yellow-50 rounded-lg p-4 border border-yellow-100 relative">
+                            <div
+                                class="bg-yellow-50 rounded-lg p-4 border border-yellow-100 relative h-64 overflow-y-auto">
                                 <div class="absolute top-2 right-2 text-yellow-200 text-4xl font-bold opacity-20">3
                                 </div>
                                 <h4 class="text-yellow-800 font-bold text-sm mb-3 uppercase">紧急不重要 (Delegate)</h4>
-                                <ul class="space-y-2">
-                                    <li class="flex items-start">
-                                        <input type="checkbox"
-                                            class="mt-1 mr-2 text-yellow-600 focus:ring-yellow-500 rounded border-gray-300">
-                                        <span class="text-sm text-gray-700">回复供应商询价邮件</span>
-                                    </li>
+                                <ul id="quadrant-3-list" class="space-y-2">
+                                    <!-- Dynamic Tasks -->
                                 </ul>
                             </div>
 
                             <!-- 第四象限：不重要不紧急 -->
-                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-100 relative">
+                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-100 relative h-64 overflow-y-auto">
                                 <div class="absolute top-2 right-2 text-gray-200 text-4xl font-bold opacity-20">4</div>
                                 <h4 class="text-gray-600 font-bold text-sm mb-3 uppercase">不重要不紧急 (Delete)</h4>
-                                <ul class="space-y-2">
-                                    <li class="flex items-start">
-                                        <input type="checkbox"
-                                            class="mt-1 mr-2 text-gray-600 focus:ring-gray-500 rounded border-gray-300"
-                                            checked>
-                                        <span class="text-sm text-gray-400 line-through">整理旧文档文件夹</span>
-                                    </li>
+                                <ul id="quadrant-4-list" class="space-y-2">
+                                    <!-- Dynamic Tasks -->
                                 </ul>
                             </div>
                         </div>
@@ -294,18 +280,18 @@
                         </div>
 
                         <div class="flex-1 flex flex-col items-center justify-center mb-6">
-                            <div
-                                class="w-40 h-40 rounded-full border-8 border-gray-100 border-t-primary flex items-center justify-center relative shadow-sm">
+                            <div class="w-40 h-40 rounded-full border-8 border-gray-100 border-t-primary flex items-center justify-center relative shadow-sm transition-all duration-500"
+                                id="timer-circle">
                                 <div class="text-center">
-                                    <span class="block text-4xl font-bold text-gray-800">25:00</span>
-                                    <span class="text-xs text-gray-500">专注中</span>
+                                    <span id="timer-display" class="block text-4xl font-bold text-gray-800">25:00</span>
+                                    <span id="timer-status" class="text-xs text-gray-500">Ready</span>
                                 </div>
                             </div>
                             <div class="mt-6 flex space-x-3">
-                                <button
+                                <button onclick="toggleTimer()" id="timer-btn"
                                     class="bg-primary text-white px-6 py-2 rounded-full font-medium hover:bg-indigo-700 shadow-md transition">开始专注</button>
-                                <button
-                                    class="bg-gray-100 text-gray-600 px-6 py-2 rounded-full font-medium hover:bg-gray-200 transition">休息</button>
+                                <button onclick="resetTimer()"
+                                    class="bg-gray-100 text-gray-600 px-6 py-2 rounded-full font-medium hover:bg-gray-200 transition">重置</button>
                             </div>
                         </div>
 

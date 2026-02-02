@@ -17,6 +17,7 @@ tailwind.config = {
 // Storage Keys
 const STORAGE_KEY_LOGS = 'nexus_daily_logs';
 const STORAGE_KEY_DRAFT = 'nexus_daily_draft';
+const STORAGE_KEY_TASKS = 'nexus_tasks'; // New for dashboard tasks
 
 // Initialize Data
 let dailyLogs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || '[]');
@@ -30,23 +31,39 @@ if (dailyLogs.length === 0) {
     localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(dailyLogs));
 }
 
+let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY_TASKS) || '[]');
+if (tasks.length === 0) {
+    tasks = [
+        { id: '1', content: '修复线上支付接口 502 错误', quadrant: 1, completed: false, createdAt: new Date().toISOString() },
+        { id: '2', content: '个人网站架构重构设计', quadrant: 2, completed: false, createdAt: new Date().toISOString() },
+        { id: '3', content: '回复供应商询价邮件', quadrant: 3, completed: false, createdAt: new Date().toISOString() },
+        { id: '4', content: '整理旧文档文件夹', quadrant: 4, completed: true, createdAt: new Date().toISOString() }
+    ];
+    localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(tasks));
+}
+
 // Load Drafts on Page Load
 document.addEventListener('DOMContentLoaded', () => {
     // Restore Drafts
     const draft = JSON.parse(localStorage.getItem(STORAGE_KEY_DRAFT) || '{}');
-    if (draft.done) document.getElementById('daily-done').value = draft.done;
-    if (draft.blockers) document.getElementById('daily-blockers').value = draft.blockers;
-    if (draft.plan) document.getElementById('daily-plan').value = draft.plan;
+    if (document.getElementById('daily-done')) {
+        if (draft.done) document.getElementById('daily-done').value = draft.done;
+        if (draft.blockers) document.getElementById('daily-blockers').value = draft.blockers;
+        if (draft.plan) document.getElementById('daily-plan').value = draft.plan;
 
-    // Add input listeners for auto-save draft
-    ['daily-done', 'daily-blockers', 'daily-plan'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.addEventListener('input', saveDraft);
-        }
-    });
+        // Add input listeners for auto-save draft
+        ['daily-done', 'daily-blockers', 'daily-plan'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', saveDraft);
+            }
+        });
+    }
 
     renderDailyLogs();
+    renderTasks();
+    updateDashboardStats();
+    updateTimerDisplay(); // Init timer display
 });
 
 // Save Draft
@@ -198,40 +215,189 @@ function generateWeeklyReport() {
         return flatList.map(item => `- ${item.replace(/^- /, '')}`).join('\n');
     }
 
-    const doneText = processList(allDone) || "1. 暂无记录";
-    const blockersText = processBlockers(allBlockers) || "- 暂无阻塞";
-    const planText = processList(allPlans) || "1. 制定下周计划";
+    const doneText = processList(allDone) || '本周暂无产出';
+    const blockersText = processBlockers(allBlockers) || '无';
+    const planText = processList(allPlans) || '待定';
 
-    const reportText = `
-# 周报 (Weekly Report) - ${new Date().toLocaleDateString()}
-汇报人：Chen Xunlin
-
-## 🟢 本周进展 (Progress)
+    // 4. 生成最终文本
+    const reportText = `### 本周工作产出
 ${doneText}
 
-## 🔴 风险与问题 (Risks & Blockers)
+### 遇到的问题与解决方案
 ${blockersText}
 
-## 🔵 下周计划 (Next Week)
-${planText}
+### 下周计划
+${planText}`;
 
-## 💡 思考与总结 (Summary)
-本周共提交了 ${recentLogs.length} 篇日报。
-    `.trim();
+    reportBox.value = reportText;
+}
 
-    // 模拟打字机效果
-    reportBox.value = "";
-    let i = 0;
-    // Clear any existing interval to prevent overlapping
-    if (window.typeWriterInterval) clearInterval(window.typeWriterInterval);
+// --- Dashboard Logic (Eisenhower Matrix & Stats) ---
 
-    window.typeWriterInterval = setInterval(() => {
-        if (i < reportText.length) {
-            reportBox.value += reportText.charAt(i);
-            i++;
-            reportBox.scrollTop = reportBox.scrollHeight;
-        } else {
-            clearInterval(window.typeWriterInterval);
-        }
-    }, 5);
+function addTaskFromInput() {
+    const input = document.getElementById('new-task-input');
+    const quadrantSelect = document.getElementById('new-task-quadrant');
+
+    if (!input || !quadrantSelect) return;
+
+    const content = input.value.trim();
+    if (!content) return;
+
+    const newTask = {
+        id: Date.now().toString(),
+        content: content,
+        quadrant: parseInt(quadrantSelect.value),
+        completed: false,
+        createdAt: new Date().toISOString()
+    };
+
+    tasks.push(newTask);
+    localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(tasks));
+
+    input.value = '';
+    renderTasks();
+    updateDashboardStats();
+}
+
+function toggleTask(id) {
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+        task.completed = !task.completed;
+        localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(tasks));
+        renderTasks();
+        updateDashboardStats();
+    }
+}
+
+function deleteTask(id) {
+    if (!confirm("确定删除此任务吗？")) return;
+    tasks = tasks.filter(t => t.id !== id);
+    localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(tasks));
+    renderTasks();
+    updateDashboardStats();
+}
+
+function renderTasks() {
+    // Clear all quadrants
+    [1, 2, 3, 4].forEach(q => {
+        const list = document.getElementById(`quadrant-${q}-list`);
+        if (list) list.innerHTML = '';
+    });
+
+    // Define colors for quadrants
+    const colors = {
+        1: { text: 'text-red-600', ring: 'focus:ring-red-500' },
+        2: { text: 'text-blue-600', ring: 'focus:ring-blue-500' },
+        3: { text: 'text-yellow-600', ring: 'focus:ring-yellow-500' },
+        4: { text: 'text-gray-600', ring: 'focus:ring-gray-500' }
+    };
+
+    tasks.forEach(task => {
+        const list = document.getElementById(`quadrant-${task.quadrant}-list`);
+        if (!list) return;
+
+        const li = document.createElement('li');
+        li.className = 'flex items-start group justify-between';
+
+        const checked = task.completed ? 'checked' : '';
+        const lineThrough = task.completed ? 'line-through text-gray-400' : 'text-gray-700';
+        const colorClass = colors[task.quadrant];
+
+        li.innerHTML = `
+            <div class="flex items-start flex-1">
+                <input type="checkbox" onchange="toggleTask('${task.id}')" ${checked}
+                    class="mt-1 mr-2 ${colorClass.text} ${colorClass.ring} rounded border-gray-300">
+                <span class="text-sm ${lineThrough} break-all cursor-pointer" onclick="toggleTask('${task.id}')">${task.content}</span>
+            </div>
+            <button onclick="deleteTask('${task.id}')" class="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                <i class="fas fa-trash-alt text-xs"></i>
+            </button>
+        `;
+        list.appendChild(li);
+    });
+}
+
+function updateDashboardStats() {
+    // 1. Today's Focus: Count of incomplete tasks in Q1 (Do Now)
+    const focusCount = tasks.filter(t => t.quadrant === 1 && !t.completed).length;
+    const focusEl = document.getElementById('dashboard-focus-count');
+    if (focusEl) focusEl.textContent = focusCount;
+
+    // 2. Completion Rate: (Completed Tasks / Total Tasks) * 100
+    // Or maybe just based on all tasks in the dashboard for now?
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(t => t.completed).length;
+    const rate = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+
+    const rateText = document.getElementById('dashboard-completion-rate');
+    const rateBar = document.getElementById('dashboard-completion-bar');
+
+    if (rateText) rateText.textContent = rate + '%';
+    if (rateBar) rateBar.style.width = rate + '%';
+}
+
+
+// --- Pomodoro Timer Logic ---
+let timerInterval;
+let timeLeft = 25 * 60; // 25 minutes in seconds
+let isTimerRunning = false;
+
+function toggleTimer() {
+    const btn = document.getElementById('timer-btn');
+    const status = document.getElementById('timer-status');
+    const circle = document.getElementById('timer-circle');
+
+    if (isTimerRunning) {
+        // Pause
+        clearInterval(timerInterval);
+        isTimerRunning = false;
+        btn.textContent = "继续专注";
+        status.textContent = "Paused";
+        circle.classList.remove('animate-pulse'); // Remove pulse effect
+    } else {
+        // Start
+        isTimerRunning = true;
+        btn.textContent = "暂停";
+        status.textContent = "Focusing...";
+        circle.classList.add('animate-pulse'); // Add pulse effect
+
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            updateTimerDisplay();
+
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                isTimerRunning = false;
+                timeLeft = 0;
+                btn.textContent = "开始专注";
+                status.textContent = "Completed!";
+                circle.classList.remove('animate-pulse');
+                alert("专注时间结束！休息一下吧。");
+            }
+        }, 1000);
+    }
+}
+
+function resetTimer() {
+    clearInterval(timerInterval);
+    isTimerRunning = false;
+    timeLeft = 25 * 60;
+    updateTimerDisplay();
+
+    const btn = document.getElementById('timer-btn');
+    const status = document.getElementById('timer-status');
+    const circle = document.getElementById('timer-circle');
+
+    if (btn) btn.textContent = "开始专注";
+    if (status) status.textContent = "Ready";
+    if (circle) circle.classList.remove('animate-pulse');
+}
+
+function updateTimerDisplay() {
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+    const el = document.getElementById('timer-display');
+    if (el) el.textContent = display;
 }
