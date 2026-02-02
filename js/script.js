@@ -21,25 +21,24 @@ const STORAGE_KEY_TASKS = 'nexus_tasks'; // New for dashboard tasks
 
 // Initialize Data
 let dailyLogs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || '[]');
-// If empty, add some mock data for demo
-if (dailyLogs.length === 0) {
-    dailyLogs = [
-        { date: new Date(Date.now() - 86400000).toISOString(), done: "【开发】完成了用户登录鉴权模块 (Login/Auth)", blockers: "", plan: "继续开发" },
-        { date: new Date(Date.now() - 172800000).toISOString(), done: "【设计】完成了数据库 Schema 设计 (User/Project tables)", blockers: "", plan: "" },
-        { date: new Date(Date.now() - 259200000).toISOString(), done: "【环境】配置了本地开发环境和 CI/CD 流水线", blockers: "", plan: "" }
-    ];
+
+// Clean up legacy test data if present
+const testDataSignatures = [
+    "【开发】完成了用户登录鉴权模块 (Login/Auth)",
+    "【设计】完成了数据库 Schema 设计 (User/Project tables)",
+    "【环境】配置了本地开发环境和 CI/CD 流水线"
+];
+const initialLength = dailyLogs.length;
+dailyLogs = dailyLogs.filter(log => !testDataSignatures.includes(log.done));
+
+if (dailyLogs.length !== initialLength) {
     localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(dailyLogs));
 }
 
 let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY_TASKS) || '[]');
 if (tasks.length === 0) {
-    tasks = [
-        { id: '1', content: '修复线上支付接口 502 错误', quadrant: 1, completed: false, createdAt: new Date().toISOString() },
-        { id: '2', content: '个人网站架构重构设计', quadrant: 2, completed: false, createdAt: new Date().toISOString() },
-        { id: '3', content: '回复供应商询价邮件', quadrant: 3, completed: false, createdAt: new Date().toISOString() },
-        { id: '4', content: '整理旧文档文件夹', quadrant: 4, completed: true, createdAt: new Date().toISOString() }
-    ];
-    localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(tasks));
+    // Empty tasks initially
+    tasks = [];
 }
 
 // Load Drafts on Page Load
@@ -263,10 +262,136 @@ function toggleTask(id) {
     const task = tasks.find(t => t.id === id);
     if (task) {
         task.completed = !task.completed;
+
+        if (task.completed) {
+            addToDailyDraft(task.content);
+        }
+
         localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(tasks));
         renderTasks();
         updateDashboardStats();
     }
+}
+
+// Add task content to Daily Report Draft
+function addToDailyDraft(content) {
+    let draft = JSON.parse(localStorage.getItem(STORAGE_KEY_DRAFT) || '{}');
+    let doneText = draft.done || '';
+
+    // Check if content is already in the draft to avoid duplicates
+    if (doneText.indexOf(content) !== -1) return;
+
+    if (doneText.length > 0) {
+        doneText += '\n';
+    }
+    doneText += `- [Task] ${content}`;
+
+    draft.done = doneText;
+    localStorage.setItem(STORAGE_KEY_DRAFT, JSON.stringify(draft));
+
+    // Update input if element exists
+    const doneInput = document.getElementById('daily-done');
+    if (doneInput) {
+        doneInput.value = doneText;
+    }
+
+    // Optional: Visual Feedback (Toast)
+    showToast(`任务已同步至日报：${content}`);
+}
+
+// Sync all completed tasks from today to draft
+function syncTodayTasksToDraft() {
+    // Get today's start timestamp
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+    // Filter completed tasks created or completed today? 
+    // For simplicity, we check if they are completed and in the list (assuming list is active tasks)
+    // Or we should check a 'completedAt' field? Currently we don't have completedAt.
+    // We'll just take all completed tasks currently in the list.
+    const completedTasks = tasks.filter(t => t.completed);
+
+    if (completedTasks.length === 0) {
+        alert("没有找到已完成的任务");
+        return;
+    }
+
+    let draft = JSON.parse(localStorage.getItem(STORAGE_KEY_DRAFT) || '{}');
+    let doneText = draft.done || '';
+    let addedCount = 0;
+
+    completedTasks.forEach(task => {
+        if (doneText.indexOf(task.content) === -1) {
+            if (doneText.length > 0) doneText += '\n';
+            doneText += `- [Task] ${task.content}`;
+            addedCount++;
+        }
+    });
+
+    if (addedCount > 0) {
+        draft.done = doneText;
+        localStorage.setItem(STORAGE_KEY_DRAFT, JSON.stringify(draft));
+
+        const doneInput = document.getElementById('daily-done');
+        if (doneInput) doneInput.value = doneText;
+
+        showToast(`已同步 ${addedCount} 个任务到日报`);
+    } else {
+        showToast("所有已完成任务都已在日报中");
+    }
+}
+
+function copyWeeklyReport() {
+    const content = document.getElementById('weekly-report-content');
+    if (!content || !content.value) {
+        alert("请先生成周报");
+        return;
+    }
+
+    content.select();
+    document.execCommand('copy'); // Fallback for older browsers
+    // Navigator Clipboard API
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(content.value).then(() => {
+            showToast("周报已复制到剪贴板");
+        });
+    } else {
+        showToast("周报已复制");
+    }
+}
+
+function sendWeeklyReport() {
+    const content = document.getElementById('weekly-report-content');
+    if (!content || !content.value) {
+        alert("请先生成周报");
+        return;
+    }
+
+    // Simulate sending email
+    const subject = `周报 - ${new Date().toLocaleDateString()}`;
+    const body = encodeURIComponent(content.value);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+}
+
+// Simple Toast Notification
+function showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded shadow-lg z-50 transform transition-all duration-300 translate-y-10 opacity-0';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    // Animate in
+    requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-10', 'opacity-0');
+    });
+
+    // Animate out
+    setTimeout(() => {
+        toast.classList.add('translate-y-10', 'opacity-0');
+        setTimeout(() => {
+            document.body.removeChild(toast);
+        }, 300);
+    }, 3000);
 }
 
 function deleteTask(id) {
@@ -339,13 +464,20 @@ function updateDashboardStats() {
 
 // --- Pomodoro Timer Logic ---
 let timerInterval;
-let timeLeft = 25 * 60; // 25 minutes in seconds
+const TOTAL_TIME = 25 * 60; // 25 minutes in seconds
+let timeLeft = TOTAL_TIME;
 let isTimerRunning = false;
+const CIRCUMFERENCE = 2 * Math.PI * 45; // r=45
 
 function toggleTimer() {
+    // Request notification permission if needed
+    if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+        Notification.requestPermission();
+    }
+
     const btn = document.getElementById('timer-btn');
     const status = document.getElementById('timer-status');
-    const circle = document.getElementById('timer-circle');
+    // const circle = document.getElementById('timer-circle'); // No longer used for pulse
 
     if (isTimerRunning) {
         // Pause
@@ -353,13 +485,11 @@ function toggleTimer() {
         isTimerRunning = false;
         btn.textContent = "继续专注";
         status.textContent = "Paused";
-        circle.classList.remove('animate-pulse'); // Remove pulse effect
     } else {
         // Start
         isTimerRunning = true;
         btn.textContent = "暂停";
         status.textContent = "Focusing...";
-        circle.classList.add('animate-pulse'); // Add pulse effect
 
         timerInterval = setInterval(() => {
             timeLeft--;
@@ -371,8 +501,9 @@ function toggleTimer() {
                 timeLeft = 0;
                 btn.textContent = "开始专注";
                 status.textContent = "Completed!";
-                circle.classList.remove('animate-pulse');
-                alert("专注时间结束！休息一下吧。");
+
+                // Show Notifications
+                showTimerNotification();
             }
         }, 1000);
     }
@@ -381,16 +512,14 @@ function toggleTimer() {
 function resetTimer() {
     clearInterval(timerInterval);
     isTimerRunning = false;
-    timeLeft = 25 * 60;
+    timeLeft = TOTAL_TIME;
     updateTimerDisplay();
 
     const btn = document.getElementById('timer-btn');
     const status = document.getElementById('timer-status');
-    const circle = document.getElementById('timer-circle');
 
     if (btn) btn.textContent = "开始专注";
     if (status) status.textContent = "Ready";
-    if (circle) circle.classList.remove('animate-pulse');
 }
 
 function updateTimerDisplay() {
@@ -400,4 +529,732 @@ function updateTimerDisplay() {
 
     const el = document.getElementById('timer-display');
     if (el) el.textContent = display;
+
+    // Update Progress Circle
+    const progressCircle = document.getElementById('timer-progress');
+    if (progressCircle) {
+        // Calculate offset: 0 is full, CIRCUMFERENCE is empty
+        // We want to go from Full to Empty as time decreases
+        // At start: timeLeft = TOTAL_TIME -> offset = 0
+        // At end: timeLeft = 0 -> offset = CIRCUMFERENCE
+        const offset = CIRCUMFERENCE - (timeLeft / TOTAL_TIME) * CIRCUMFERENCE;
+        progressCircle.style.strokeDashoffset = offset;
+    }
+}
+
+function showTimerNotification() {
+    // 1. Browser Notification
+    if (Notification.permission === "granted") {
+        new Notification("专注时间结束！", {
+            body: "你已经完成了本次专注任务，休息一下吧。",
+            icon: "https://cdn-icons-png.flaticon.com/512/2098/2098542.png" // Optional icon
+        });
+    }
+
+    // 2. Custom Modal
+    const modal = document.getElementById('notification-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+}
+
+function closeNotificationModal() {
+    const modal = document.getElementById('notification-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    // Auto reset timer after closing modal
+    resetTimer();
+}
+
+// --- Goal Management (SMART) ---
+
+const STORAGE_KEY_GOALS = 'nexus_goals';
+let goals = JSON.parse(localStorage.getItem(STORAGE_KEY_GOALS) || '[]');
+
+function renderGoals() {
+    const container = document.querySelector('#smart-section .grid');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (goals.length === 0) {
+        container.innerHTML = `
+            <div class="col-span-1 lg:col-span-2 text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
+                <div class="text-gray-400 mb-4"><i class="fas fa-bullseye text-4xl opacity-20"></i></div>
+                <p class="text-gray-500">暂无目标，点击右上角“新增目标”开始规划</p>
+            </div>
+        `;
+        return;
+    }
+
+    goals.forEach(goal => {
+        const priorityColors = {
+            high: 'bg-red-100 text-red-800',
+            medium: 'bg-yellow-100 text-yellow-800',
+            low: 'bg-green-100 text-green-800'
+        };
+
+        const priorityLabels = {
+            high: 'P0',
+            medium: 'P1',
+            low: 'P2'
+        };
+
+        const progressColor = goal.progress >= 100 ? 'bg-green-500' : 'bg-primary';
+
+        const html = `
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 relative group hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">${goal.title}</h3>
+                        <p class="text-sm text-gray-500 mt-1">截止日期: ${goal.deadline || '未设置'}</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${priorityColors[goal.priority]}">
+                            ${priorityLabels[goal.priority]}
+                        </span>
+                        <button onclick="deleteGoal('${goal.id}')" class="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600 whitespace-pre-line">${goal.result || '暂无关键结果'}</p>
+                </div>
+
+                <div class="flex items-center justify-between text-sm text-gray-500 mb-1">
+                    <span>进度</span>
+                    <span class="font-medium text-gray-900">${goal.progress}%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
+                    <div class="${progressColor} h-2 rounded-full transition-all duration-500" style="width: ${goal.progress}%"></div>
+                </div>
+                
+                <div class="flex justify-between items-center pt-4 border-t border-gray-50">
+                     <span class="text-xs text-gray-400">状态: ${goal.status === 'completed' ? '已完成' : (goal.status === 'in_progress' ? '进行中' : '未开始')}</span>
+                     <button onclick="openGoalModal('${goal.id}')" class="text-primary hover:text-indigo-700 text-sm font-medium">编辑</button>
+                </div>
+            </div>
+        `;
+        container.innerHTML += html;
+    });
+}
+
+function openGoalModal(id = null) {
+    const modal = document.getElementById('goal-modal');
+    if (!modal) return;
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    const titleEl = document.getElementById('goal-modal-title');
+    const idInput = document.getElementById('goal-id');
+    const titleInput = document.getElementById('goal-title');
+    const resultInput = document.getElementById('goal-result');
+    const deadlineInput = document.getElementById('goal-deadline');
+    const priorityInput = document.getElementById('goal-priority');
+    const progressInput = document.getElementById('goal-progress');
+    const progressVal = document.getElementById('goal-progress-val');
+    const statusInput = document.getElementById('goal-status');
+
+    if (id) {
+        // Edit Mode
+        const goal = goals.find(g => g.id === id);
+        if (goal) {
+            titleEl.textContent = '编辑目标';
+            idInput.value = goal.id;
+            titleInput.value = goal.title;
+            resultInput.value = goal.result || '';
+            deadlineInput.value = goal.deadline || '';
+            priorityInput.value = goal.priority;
+            progressInput.value = goal.progress;
+            progressVal.textContent = goal.progress + '%';
+            statusInput.value = goal.status;
+        }
+    } else {
+        // Add Mode
+        titleEl.textContent = '新增目标 (SMART)';
+        idInput.value = '';
+        titleInput.value = '';
+        resultInput.value = '';
+        deadlineInput.value = '';
+        priorityInput.value = 'high';
+        progressInput.value = 0;
+        progressVal.textContent = '0%';
+        statusInput.value = 'pending';
+    }
+}
+
+function closeGoalModal() {
+    const modal = document.getElementById('goal-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+function saveGoal() {
+    const id = document.getElementById('goal-id').value;
+    const title = document.getElementById('goal-title').value;
+    const result = document.getElementById('goal-result').value;
+    const deadline = document.getElementById('goal-deadline').value;
+    const priority = document.getElementById('goal-priority').value;
+    const progress = document.getElementById('goal-progress').value;
+    const status = document.getElementById('goal-status').value;
+
+    if (!title) {
+        alert('请输入目标名称');
+        return;
+    }
+
+    if (id) {
+        // Update
+        const index = goals.findIndex(g => g.id === id);
+        if (index !== -1) {
+            goals[index] = { ...goals[index], title, result, deadline, priority, progress, status };
+        }
+    } else {
+        // Create
+        const newGoal = {
+            id: Date.now().toString(),
+            title,
+            result,
+            deadline,
+            priority,
+            progress,
+            status,
+            createdAt: new Date().toISOString()
+        };
+        goals.push(newGoal);
+    }
+
+    localStorage.setItem(STORAGE_KEY_GOALS, JSON.stringify(goals));
+    renderGoals();
+    closeGoalModal();
+    showToast('目标已保存');
+}
+
+function deleteGoal(id) {
+    if (!confirm('确定要删除这个目标吗？')) return;
+    goals = goals.filter(g => g.id !== id);
+    localStorage.setItem(STORAGE_KEY_GOALS, JSON.stringify(goals));
+    renderGoals();
+    showToast('目标已删除');
+}
+
+// Initialize Goals
+document.addEventListener('DOMContentLoaded', () => {
+    renderGoals();
+    renderTimeLogs();
+    renderReviews();
+});
+
+// --- Time & Energy Management ---
+
+const STORAGE_KEY_TIME_LOGS = 'nexus_time_logs';
+let timeLogs = JSON.parse(localStorage.getItem(STORAGE_KEY_TIME_LOGS) || '[]');
+
+function renderTimeLogs() {
+    renderEnergyChart();
+    const container = document.getElementById('time-log-list');
+    const totalEl = document.getElementById('time-log-total');
+    if (!container || !totalEl) return;
+
+    container.innerHTML = '';
+
+    // Filter for today's logs (optional, but "Today's Time Expenditure" implies daily reset or filtering)
+    // For simplicity, we'll show all logs but let's assume the user manually clears or we just show everything for now.
+    // Or better, filter by date.
+    const today = new Date().toDateString();
+    const todaysLogs = timeLogs.filter(log => new Date(log.createdAt).toDateString() === today);
+
+    if (todaysLogs.length === 0) {
+        container.innerHTML = `
+            <li class="text-center text-gray-400 text-sm py-4">
+                暂无记录
+            </li>
+        `;
+        totalEl.textContent = '0h 0m';
+        return;
+    }
+
+    let totalMinutes = 0;
+
+    todaysLogs.forEach(log => {
+        totalMinutes += parseInt(log.duration || 0);
+
+        const categoryColors = {
+            dev: 'bg-primary',
+            meeting: 'bg-yellow-400',
+            other: 'bg-gray-400'
+        };
+
+        const categoryLabels = {
+            dev: '项目开发',
+            meeting: '会议沟通',
+            other: '碎片干扰'
+        };
+
+        const html = `
+            <li class="flex items-center justify-between group">
+                <div class="flex items-center overflow-hidden">
+                    <div class="w-2 h-2 rounded-full ${categoryColors[log.category] || 'bg-gray-400'} mr-2 flex-shrink-0"></div>
+                    <div class="flex flex-col min-w-0">
+                        <span class="text-sm text-gray-700 truncate font-medium" title="${log.task}">${log.task}</span>
+                        <span class="text-xs text-gray-400">${categoryLabels[log.category] || '其他'}</span>
+                    </div>
+                </div>
+                <div class="flex items-center ml-2 flex-shrink-0">
+                    <span class="text-sm font-bold text-gray-900 mr-3">${formatDuration(log.duration)}</span>
+                    <button onclick="deleteTimeLog('${log.id}')" class="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </li>
+        `;
+        container.innerHTML += html;
+    });
+
+    totalEl.textContent = formatDuration(totalMinutes);
+}
+
+function addTimeLog() {
+    const taskInput = document.getElementById('time-log-task');
+    const durationInput = document.getElementById('time-log-duration');
+    const categoryInput = document.getElementById('time-log-category');
+
+    const task = taskInput.value.trim();
+    const duration = parseInt(durationInput.value);
+    const category = categoryInput.value;
+
+    if (!task) {
+        alert('请输入任务内容');
+        return;
+    }
+
+    if (!duration || duration <= 0) {
+        alert('请输入有效的耗时（分钟）');
+        return;
+    }
+
+    const newLog = {
+        id: Date.now().toString(),
+        task,
+        duration,
+        category,
+        createdAt: new Date().toISOString()
+    };
+
+    timeLogs.unshift(newLog); // Add to top
+    localStorage.setItem(STORAGE_KEY_TIME_LOGS, JSON.stringify(timeLogs));
+
+    renderTimeLogs();
+
+    // Reset inputs
+    taskInput.value = '';
+    durationInput.value = '';
+    showToast('时间日志已添加');
+}
+
+function deleteTimeLog(id) {
+    if (!confirm('确定要删除这条记录吗？')) return;
+    timeLogs = timeLogs.filter(log => log.id !== id);
+    localStorage.setItem(STORAGE_KEY_TIME_LOGS, JSON.stringify(timeLogs));
+    renderTimeLogs();
+}
+
+function formatDuration(minutes) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (h > 0) {
+        return `${h}h ${m}m`;
+    }
+    return `${m}m`;
+}
+
+// --- Energy Chart Visualization ---
+const STORAGE_KEY_ENERGY_CONFIG = 'nexus_energy_config';
+let energyChart = null;
+let energyConfig = JSON.parse(localStorage.getItem(STORAGE_KEY_ENERGY_CONFIG) || JSON.stringify({
+    peakStart: '09:00',
+    peakEnd: '11:00',
+    dipStart: '13:00',
+    dipEnd: '14:00'
+}));
+
+function renderEnergyChart() {
+    const ctx = document.getElementById('energy-chart');
+    if (!ctx) return;
+
+    // Helper to convert time string "HH:MM" to decimal hour
+    const toDecimal = (timeStr) => {
+        const [h, m] = timeStr.split(':').map(Number);
+        return h + m / 60;
+    };
+
+    const peakStart = toDecimal(energyConfig.peakStart);
+    const peakEnd = toDecimal(energyConfig.peakEnd);
+    const dipStart = toDecimal(energyConfig.dipStart);
+    const dipEnd = toDecimal(energyConfig.dipEnd);
+
+    // 1. Prepare Baseline Data (Smooth Curve)
+    // 08:00 - 20:00
+    const baselinePoints = [];
+    for (let h = 8; h <= 20; h += 0.5) { // Step by 0.5 hour for smoother curve
+        let val = 50; // Default Medium
+
+        if (h >= peakStart && h <= peakEnd) {
+            val = 90; // High
+        } else if (h >= dipStart && h <= dipEnd) {
+            val = 40; // Low
+        } else if (h > peakEnd && h < dipStart) {
+            val = 60; // Transition (Morning to Lunch)
+        } else if (h > dipEnd && h < 18) {
+            val = 70; // Afternoon Recovery
+        } else if (h >= 18) {
+            val = 30; // Evening Drop
+        }
+
+        baselinePoints.push({ x: h, y: val });
+    }
+
+    // Update Text in UI
+    const peakText = document.querySelector('.bg-green-50 h4');
+    const dipText = document.querySelector('.bg-yellow-50 h4');
+    if (peakText) peakText.textContent = `黄金时间 (${energyConfig.peakStart} - ${energyConfig.peakEnd})`;
+    if (dipText) dipText.textContent = `行政时间 (${energyConfig.dipStart} - ${energyConfig.dipEnd})`;
+
+    // 2. Prepare User Data from Time Logs
+    // Filter for today
+    const today = new Date().toDateString();
+    const todaysLogs = timeLogs.filter(log => new Date(log.createdAt).toDateString() === today);
+
+    const userPoints = todaysLogs.map(log => {
+        const d = new Date(log.createdAt);
+        const hour = d.getHours() + d.getMinutes() / 60;
+
+        let energy = 50;
+        if (log.category === 'dev') energy = 85;
+        else if (log.category === 'meeting') energy = 60;
+        else energy = 30;
+
+        return {
+            x: hour,
+            y: energy,
+            task: log.task,
+            duration: log.duration
+        };
+    });
+
+    if (energyChart) {
+        energyChart.destroy();
+    }
+
+    energyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [
+                {
+                    label: '基准精力 (Baseline)',
+                    data: baselinePoints,
+                    borderColor: '#E5E7EB', // Gray-200
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    tension: 0.4, // Smooth curve
+                    fill: true,
+                    backgroundColor: 'rgba(243, 244, 246, 0.4)' // Gray-100
+                },
+                {
+                    label: '实际工作 (Work Log)',
+                    data: userPoints,
+                    type: 'scatter',
+                    backgroundColor: (context) => {
+                        const val = context.raw?.y;
+                        if (val >= 80) return '#10B981'; // Green
+                        if (val >= 50) return '#F59E0B'; // Yellow
+                        return '#9CA3AF'; // Gray
+                    },
+                    pointRadius: (context) => {
+                        const duration = context.raw?.duration || 30;
+                        // Scale radius by duration: min 6, max 15
+                        return Math.min(Math.max(duration / 5, 6), 15);
+                    },
+                    pointHoverRadius: 10
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    type: 'linear',
+                    position: 'bottom',
+                    min: 8,
+                    max: 20,
+                    ticks: {
+                        stepSize: 1,
+                        callback: function (value) {
+                            return value + ':00';
+                        }
+                    },
+                    grid: {
+                        display: false
+                    }
+                },
+                y: {
+                    min: 0,
+                    max: 100,
+                    ticks: {
+                        stepSize: 50,
+                        callback: function (value) {
+                            if (value === 100) return 'High';
+                            if (value === 50) return 'Med';
+                            if (value === 0) return 'Low';
+                            return '';
+                        }
+                    },
+                    grid: {
+                        borderDash: [2, 2]
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            if (context.dataset.type === 'scatter') {
+                                const p = context.raw;
+                                return `${p.task} (${p.duration}m)`;
+                            }
+                            return null;
+                        }
+                    }
+                },
+                legend: {
+                    display: true,
+                    position: 'top',
+                    align: 'end',
+                    labels: {
+                        boxWidth: 10,
+                        usePointStyle: true
+                    }
+                }
+            }
+        }
+    });
+}
+
+function openEnergyConfigModal() {
+    const modal = document.getElementById('energy-config-modal');
+    if (!modal) return;
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    document.getElementById('config-peak-start').value = energyConfig.peakStart;
+    document.getElementById('config-peak-end').value = energyConfig.peakEnd;
+    document.getElementById('config-dip-start').value = energyConfig.dipStart;
+    document.getElementById('config-dip-end').value = energyConfig.dipEnd;
+}
+
+function closeEnergyConfigModal() {
+    const modal = document.getElementById('energy-config-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+function saveEnergyConfig() {
+    const peakStart = document.getElementById('config-peak-start').value;
+    const peakEnd = document.getElementById('config-peak-end').value;
+    const dipStart = document.getElementById('config-dip-start').value;
+    const dipEnd = document.getElementById('config-dip-end').value;
+
+    if (!peakStart || !peakEnd || !dipStart || !dipEnd) {
+        alert('请填写完整的时间段配置');
+        return;
+    }
+
+    if (peakStart >= peakEnd || dipStart >= dipEnd) {
+        alert('开始时间必须早于结束时间');
+        return;
+    }
+
+    energyConfig = {
+        peakStart,
+        peakEnd,
+        dipStart,
+        dipEnd
+    };
+
+    localStorage.setItem(STORAGE_KEY_ENERGY_CONFIG, JSON.stringify(energyConfig));
+    renderEnergyChart();
+    closeEnergyConfigModal();
+    showToast('精力配置已更新');
+}
+
+// --- Review & Process Management ---
+
+const STORAGE_KEY_REVIEWS = 'nexus_reviews';
+let reviews = JSON.parse(localStorage.getItem(STORAGE_KEY_REVIEWS) || '[]');
+
+function renderReviews() {
+    const container = document.getElementById('review-list');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (reviews.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
+                <div class="text-gray-400 mb-4"><i class="fas fa-clipboard-check text-4xl opacity-20"></i></div>
+                <p class="text-gray-500">暂无复盘记录，点击右上角开始你的第一次复盘吧！</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Sort by week (descending)
+    reviews.sort((a, b) => b.week.localeCompare(a.week));
+
+    reviews.forEach(review => {
+        const html = `
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 relative group hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800">${review.week} 复盘</h3>
+                        <p class="text-xs text-gray-500">创建于 ${new Date(review.createdAt).toLocaleDateString()}</p>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="text-yellow-500 font-bold mr-1">${review.rating}</span>
+                        <i class="fas fa-star text-yellow-400 text-sm"></i>
+                        <button onclick="deleteReview('${review.id}')" class="ml-4 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4">
+                        <div>
+                            <h4 class="text-xs font-bold text-green-600 uppercase tracking-wide mb-1">Achievements</h4>
+                            <p class="text-sm text-gray-700 whitespace-pre-line bg-green-50 p-3 rounded-lg border border-green-100">${review.achievements || '无'}</p>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold text-red-600 uppercase tracking-wide mb-1">Challenges</h4>
+                            <p class="text-sm text-gray-700 whitespace-pre-line bg-red-50 p-3 rounded-lg border border-red-100">${review.challenges || '无'}</p>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <h4 class="text-xs font-bold text-blue-600 uppercase tracking-wide mb-1">Learnings</h4>
+                            <p class="text-sm text-gray-700 whitespace-pre-line bg-blue-50 p-3 rounded-lg border border-blue-100">${review.learnings || '无'}</p>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold text-purple-600 uppercase tracking-wide mb-1">Next Week</h4>
+                            <p class="text-sm text-gray-700 whitespace-pre-line bg-purple-50 p-3 rounded-lg border border-purple-100">${review.nextFocus || '无'}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.innerHTML += html;
+    });
+}
+
+function openReviewModal() {
+    const modal = document.getElementById('review-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        // Auto-fill current week if new
+        const weekInput = document.getElementById('review-week');
+        if (weekInput && !weekInput.value) {
+            const now = new Date();
+            // Simple week calculation for default value
+            const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+            const dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+            weekInput.value = `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
+        }
+    }
+}
+
+function closeReviewModal() {
+    const modal = document.getElementById('review-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+
+        // Clear form
+        document.getElementById('review-id').value = '';
+        document.getElementById('review-week').value = '';
+        document.getElementById('review-rating').value = 3;
+        document.getElementById('review-rating-val').textContent = '3 分';
+        document.getElementById('review-achievements').value = '';
+        document.getElementById('review-challenges').value = '';
+        document.getElementById('review-learnings').value = '';
+        document.getElementById('review-next-focus').value = '';
+    }
+}
+
+function saveReview() {
+    const id = document.getElementById('review-id').value;
+    const week = document.getElementById('review-week').value;
+    const rating = document.getElementById('review-rating').value;
+    const achievements = document.getElementById('review-achievements').value;
+    const challenges = document.getElementById('review-challenges').value;
+    const learnings = document.getElementById('review-learnings').value;
+    const nextFocus = document.getElementById('review-next-focus').value;
+
+    if (!week) {
+        alert('请选择复盘周期');
+        return;
+    }
+
+    const newReview = {
+        id: id || Date.now().toString(),
+        week,
+        rating,
+        achievements,
+        challenges,
+        learnings,
+        nextFocus,
+        createdAt: new Date().toISOString()
+    };
+
+    if (id) {
+        // Update existing
+        const index = reviews.findIndex(r => r.id === id);
+        if (index !== -1) {
+            reviews[index] = newReview;
+        }
+    } else {
+        // Create new
+        reviews.unshift(newReview);
+    }
+
+    localStorage.setItem(STORAGE_KEY_REVIEWS, JSON.stringify(reviews));
+    renderReviews();
+    closeReviewModal();
+    showToast('复盘记录已保存');
+}
+
+function deleteReview(id) {
+    if (!confirm('确定要删除这条复盘记录吗？')) return;
+    reviews = reviews.filter(r => r.id !== id);
+    localStorage.setItem(STORAGE_KEY_REVIEWS, JSON.stringify(reviews));
+    renderReviews();
+    showToast('记录已删除');
 }

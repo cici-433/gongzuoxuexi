@@ -151,32 +151,7 @@
 
     <!-- Main Content -->
     <main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-gray-50">
-        <!-- Header -->
-        <header class="bg-white shadow-sm h-16 flex items-center justify-between px-6 z-10">
-            <div class="flex items-center">
-                <button class="text-gray-500 hover:text-gray-700 focus:outline-none lg:hidden">
-                    <i class="fas fa-bars fa-lg"></i>
-                </button>
-                <div class="ml-4 relative text-gray-400 focus-within:text-gray-600 hidden md:block">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <i class="fas fa-search"></i>
-                    </div>
-                    <input name="search" id="search"
-                        class="block w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:border-primary focus:ring-1 focus:ring-primary sm:text-sm"
-                        placeholder="搜索任务、项目或文档..." type="search">
-                </div>
-            </div>
-            <div class="flex items-center space-x-4">
-                <button
-                    class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition shadow-sm">
-                    <i class="fas fa-plus mr-1"></i> 快速记录
-                </button>
-                <button class="text-gray-400 hover:text-gray-600 relative">
-                    <i class="far fa-bell fa-lg"></i>
-                    <span class="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
-                </button>
-            </div>
-        </header>
+
 
         <!-- Scrollable Content -->
         <div class="flex-1 overflow-auto p-6">
@@ -280,9 +255,17 @@
                         </div>
 
                         <div class="flex-1 flex flex-col items-center justify-center mb-6">
-                            <div class="w-40 h-40 rounded-full border-8 border-gray-100 border-t-primary flex items-center justify-center relative shadow-sm transition-all duration-500"
-                                id="timer-circle">
-                                <div class="text-center">
+                            <div class="relative w-40 h-40">
+                                <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                    <!-- Background circle -->
+                                    <circle cx="50" cy="50" r="45" fill="none" stroke="#F3F4F6" stroke-width="8">
+                                    </circle>
+                                    <!-- Progress circle -->
+                                    <circle id="timer-progress" cx="50" cy="50" r="45" fill="none" stroke="#4F46E5"
+                                        stroke-width="8" stroke-linecap="round" stroke-dasharray="283"
+                                        stroke-dashoffset="0" class="transition-all duration-1000 ease-linear"></circle>
+                                </svg>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center">
                                     <span id="timer-display" class="block text-4xl font-bold text-gray-800">25:00</span>
                                     <span id="timer-status" class="text-xs text-gray-500">Ready</span>
                                 </div>
@@ -301,19 +284,19 @@
                                 <div>
                                     <div class="flex justify-between text-xs mb-1">
                                         <span>深度工作 (Dev)</span>
-                                        <span>3h 45m</span>
+                                        <span>0h 0m</span>
                                     </div>
                                     <div class="w-full bg-gray-100 rounded-full h-1.5">
-                                        <div class="bg-primary h-1.5 rounded-full" style="width: 60%"></div>
+                                        <div class="bg-primary h-1.5 rounded-full" style="width: 0%"></div>
                                     </div>
                                 </div>
                                 <div>
                                     <div class="flex justify-between text-xs mb-1">
                                         <span>会议 (Meeting)</span>
-                                        <span>1h 30m</span>
+                                        <span>0h 0m</span>
                                     </div>
                                     <div class="w-full bg-gray-100 rounded-full h-1.5">
-                                        <div class="bg-yellow-400 h-1.5 rounded-full" style="width: 25%"></div>
+                                        <div class="bg-yellow-400 h-1.5 rounded-full" style="width: 0%"></div>
                                     </div>
                                 </div>
                             </div>
@@ -453,7 +436,13 @@
                                     class="fas fa-pen text-secondary mr-2"></i>今日日报 (Daily Log)</h3>
                             <form id="daily-log-form">
                                 <div class="mb-4">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">今日产出 (Done)</label>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label class="block text-sm font-medium text-gray-700">今日产出 (Done)</label>
+                                        <button type="button" onclick="syncTodayTasksToDraft()"
+                                            class="text-xs text-primary hover:text-indigo-700">
+                                            <i class="fas fa-sync-alt mr-1"></i>同步今日已完成任务
+                                        </button>
+                                    </div>
                                     <textarea id="daily-done"
                                         class="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm p-2 border"
                                         rows="3" placeholder="- 完成了 X 功能开发&#10;- 修复了 Y Bug"></textarea>
@@ -493,9 +482,11 @@
                                 <h3 class="text-lg font-bold text-gray-800"><i
                                         class="fas fa-clipboard-list text-primary mr-2"></i>周报预览 (Weekly Report)</h3>
                                 <div class="space-x-2">
-                                    <button class="text-gray-400 hover:text-gray-600"><i class="fas fa-copy"></i>
+                                    <button onclick="copyWeeklyReport()" class="text-gray-400 hover:text-gray-600"><i
+                                            class="fas fa-copy"></i>
                                         复制</button>
-                                    <button class="text-gray-400 hover:text-gray-600"><i class="fas fa-envelope"></i>
+                                    <button onclick="sendWeeklyReport()" class="text-gray-400 hover:text-gray-600"><i
+                                            class="fas fa-envelope"></i>
                                         发送</button>
                                 </div>
                             </div>
@@ -514,85 +505,13 @@
                         <h2 class="text-3xl font-bold text-gray-900">目标管理 (SMART)</h2>
                         <p class="text-gray-500 mt-1">聚焦核心目标，确保每一个目标都是具体且可衡量的。</p>
                     </div>
-                    <button
+                    <button onclick="openGoalModal()"
                         class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition shadow-sm">
                         <i class="fas fa-plus mr-1"></i> 新增目标
                     </button>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Goal Card Example 1 -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="flex items-center">
-                                <span
-                                    class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold mr-3">Q2</span>
-                                <div>
-                                    <h3 class="text-lg font-bold text-gray-800">完成3个客户案例复盘</h3>
-                                    <p class="text-sm text-gray-500">截止日期: 2024-06-30</p>
-                                </div>
-                            </div>
-                            <span class="px-2 py-1 text-xs font-semibold rounded bg-green-100 text-green-800">进行中</span>
-                        </div>
-
-                        <div class="space-y-3 mb-6">
-                            <div class="flex items-start">
-                                <span class="text-xs font-bold text-gray-400 w-8 mt-0.5">S</span>
-                                <p class="text-sm text-gray-600 flex-1">针对Q1交付的Top3大客户项目，输出深度复盘报告。</p>
-                            </div>
-                            <div class="flex items-start">
-                                <span class="text-xs font-bold text-gray-400 w-8 mt-0.5">M</span>
-                                <p class="text-sm text-gray-600 flex-1">输出3份PDF报告，每份不少于20页，包含数据对比。</p>
-                            </div>
-                            <div class="flex items-start">
-                                <span class="text-xs font-bold text-gray-400 w-8 mt-0.5">A</span>
-                                <p class="text-sm text-gray-600 flex-1">已收集原始数据，需安排3天专注时间撰写。</p>
-                            </div>
-                        </div>
-
-                        <div class="w-full bg-gray-100 rounded-full h-2.5 mb-2">
-                            <div class="bg-blue-600 h-2.5 rounded-full" style="width: 33%"></div>
-                        </div>
-                        <div class="flex justify-between text-xs text-gray-500">
-                            <span>当前进度: 1/3 (33%)</span>
-                            <span>剩余: 45天</span>
-                        </div>
-                    </div>
-
-                    <!-- Goal Card Example 2 -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="flex items-center">
-                                <span
-                                    class="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold mr-3">Yr</span>
-                                <div>
-                                    <h3 class="text-lg font-bold text-gray-800">提升团队代码覆盖率至 80%</h3>
-                                    <p class="text-sm text-gray-500">截止日期: 2024-12-31</p>
-                                </div>
-                            </div>
-                            <span
-                                class="px-2 py-1 text-xs font-semibold rounded bg-yellow-100 text-yellow-800">规划中</span>
-                        </div>
-
-                        <div class="space-y-3 mb-6">
-                            <div class="flex items-start">
-                                <span class="text-xs font-bold text-gray-400 w-8 mt-0.5">S</span>
-                                <p class="text-sm text-gray-600 flex-1">为核心业务模块补充单元测试，接入SonarQube。</p>
-                            </div>
-                            <div class="flex items-start">
-                                <span class="text-xs font-bold text-gray-400 w-8 mt-0.5">M</span>
-                                <p class="text-sm text-gray-600 flex-1">SonarQube 报告显示 Line Coverage > 80%。</p>
-                            </div>
-                        </div>
-
-                        <div class="w-full bg-gray-100 rounded-full h-2.5 mb-2">
-                            <div class="bg-purple-600 h-2.5 rounded-full" style="width: 10%"></div>
-                        </div>
-                        <div class="flex justify-between text-xs text-gray-500">
-                            <span>当前进度: 10%</span>
-                            <span>剩余: 200天</span>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -606,43 +525,15 @@
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <!-- Energy Map -->
                     <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h3 class="text-lg font-bold text-gray-800 mb-6"><i
-                                class="fas fa-battery-full text-secondary mr-2"></i>精力分布图 (Energy Map)</h3>
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-lg font-bold text-gray-800"><i
+                                    class="fas fa-battery-full text-secondary mr-2"></i>精力分布图 (Energy Map)</h3>
+                            <button onclick="openEnergyConfigModal()"
+                                class="text-xs text-primary hover:underline">自定义配置</button>
+                        </div>
 
-                        <div class="relative h-64 border-l border-b border-gray-200 ml-4 mb-4">
-                            <!-- Y Axis Labels -->
-                            <div class="absolute -left-8 top-0 text-xs text-gray-400">High</div>
-                            <div class="absolute -left-8 top-1/2 text-xs text-gray-400">Med</div>
-                            <div class="absolute -left-8 bottom-0 text-xs text-gray-400">Low</div>
-
-                            <!-- Chart Bars (Simulated) -->
-                            <div
-                                class="absolute bottom-0 left-2 w-12 bg-green-100 hover:bg-green-200 transition-colors h-[90%] rounded-t flex flex-col justify-end items-center group">
-                                <span class="text-xs font-bold text-green-800 mb-1 hidden group-hover:block">创意</span>
-                            </div> <!-- 9-11am -->
-                            <div
-                                class="absolute bottom-0 left-16 w-12 bg-yellow-100 hover:bg-yellow-200 transition-colors h-[50%] rounded-t flex flex-col justify-end items-center group">
-                                <span class="text-xs font-bold text-yellow-800 mb-1 hidden group-hover:block">会议</span>
-                            </div> <!-- 11-1pm -->
-                            <div
-                                class="absolute bottom-0 left-30 w-12 bg-red-100 hover:bg-red-200 transition-colors h-[30%] rounded-t flex flex-col justify-end items-center group">
-                                <span class="text-xs font-bold text-red-800 mb-1 hidden group-hover:block">午休</span>
-                            </div> <!-- 1-2pm -->
-                            <div
-                                class="absolute bottom-0 left-44 w-12 bg-green-100 hover:bg-green-200 transition-colors h-[70%] rounded-t flex flex-col justify-end items-center group">
-                                <span class="text-xs font-bold text-green-800 mb-1 hidden group-hover:block">攻坚</span>
-                            </div> <!-- 2-4pm -->
-                            <div
-                                class="absolute bottom-0 left-58 w-12 bg-yellow-100 hover:bg-yellow-200 transition-colors h-[40%] rounded-t flex flex-col justify-end items-center group">
-                                <span class="text-xs font-bold text-yellow-800 mb-1 hidden group-hover:block">邮件</span>
-                            </div> <!-- 4-6pm -->
-
-                            <!-- X Axis Labels -->
-                            <div class="absolute -bottom-6 left-2 text-xs text-gray-500 w-12 text-center">09:00</div>
-                            <div class="absolute -bottom-6 left-16 text-xs text-gray-500 w-12 text-center">11:00</div>
-                            <div class="absolute -bottom-6 left-30 text-xs text-gray-500 w-12 text-center">13:00</div>
-                            <div class="absolute -bottom-6 left-44 text-xs text-gray-500 w-12 text-center">14:00</div>
-                            <div class="absolute -bottom-6 left-58 text-xs text-gray-500 w-12 text-center">16:00</div>
+                        <div class="relative h-64 w-full">
+                            <canvas id="energy-chart"></canvas>
                         </div>
 
                         <div class="mt-8 grid grid-cols-2 gap-4">
@@ -658,36 +549,43 @@
                     </div>
 
                     <!-- Time Log -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col h-full">
                         <h3 class="text-lg font-bold text-gray-800 mb-4">今日时间开销</h3>
-                        <div class="space-y-4">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center">
-                                    <div class="w-2 h-2 rounded-full bg-primary mr-2"></div>
-                                    <span class="text-sm text-gray-700">项目开发</span>
-                                </div>
-                                <span class="text-sm font-bold text-gray-900">3h 20m</span>
+
+                        <!-- Add New Log Form -->
+                        <div class="mb-4 space-y-2">
+                            <input type="text" id="time-log-task" placeholder="做了什么功能？(例如：开发登录页)"
+                                class="w-full text-sm border-gray-300 rounded focus:ring-primary focus:border-primary">
+                            <div class="flex space-x-2">
+                                <input type="number" id="time-log-duration" placeholder="耗时(分钟)"
+                                    class="w-24 text-sm border-gray-300 rounded focus:ring-primary focus:border-primary">
+                                <select id="time-log-category"
+                                    class="flex-1 text-sm border-gray-300 rounded focus:ring-primary focus:border-primary">
+                                    <option value="dev">项目开发</option>
+                                    <option value="meeting">会议沟通</option>
+                                    <option value="other">碎片干扰</option>
+                                </select>
                             </div>
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center">
-                                    <div class="w-2 h-2 rounded-full bg-yellow-400 mr-2"></div>
-                                    <span class="text-sm text-gray-700">会议沟通</span>
-                                </div>
-                                <span class="text-sm font-bold text-gray-900">1h 15m</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center">
-                                    <div class="w-2 h-2 rounded-full bg-red-400 mr-2"></div>
-                                    <span class="text-sm text-gray-700">碎片干扰</span>
-                                </div>
-                                <span class="text-sm font-bold text-gray-900">45m</span>
-                            </div>
-                        </div>
-                        <div class="mt-6 pt-4 border-t">
-                            <button
-                                class="w-full bg-gray-100 text-gray-700 py-2 rounded-md text-sm font-medium hover:bg-gray-200 transition">
-                                <i class="fas fa-play mr-1"></i> 开始新的番茄钟
+                            <button onclick="addTimeLog()"
+                                class="w-full bg-primary text-white py-1.5 rounded text-sm hover:bg-indigo-700 transition shadow-sm">
+                                <i class="fas fa-plus mr-1"></i> 记录
                             </button>
+                        </div>
+
+                        <!-- Log List -->
+                        <div class="flex-1 overflow-y-auto mb-4 border-t border-gray-100 pt-2"
+                            style="max-height: 300px;">
+                            <ul id="time-log-list" class="space-y-3">
+                                <!-- Dynamic Content -->
+                            </ul>
+                        </div>
+
+                        <!-- Stats Summary -->
+                        <div class="mt-auto pt-4 border-t border-gray-100">
+                            <div class="flex justify-between items-end mb-2">
+                                <span class="text-xs text-gray-500">今日总计</span>
+                                <span id="time-log-total" class="text-xl font-bold text-gray-900">0h 0m</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1034,97 +932,23 @@
 
             <!-- Review & Process Section (End of new Project sections) -->
             <div id="review-section" class="hidden-section">
-                <div class="mb-6">
-                    <h2 class="text-3xl font-bold text-gray-900">流程与复盘 (Process & Review)</h2>
-                    <p class="text-gray-500 mt-1">标准化高频动作，定期回顾目标偏差。</p>
+                <div class="mb-6 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-3xl font-bold text-gray-900">流程与复盘 (Weekly Review)</h2>
+                        <p class="text-gray-500 mt-1">定期复盘是成长的关键。每周花 10 分钟回顾，持续优化工作流。</p>
+                    </div>
+                    <button onclick="openReviewModal()"
+                        class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition shadow-sm">
+                        <i class="fas fa-plus mr-1"></i> 开始本周复盘
+                    </button>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Task Breakdown Example -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
-                                class="fas fa-stream text-primary mr-2"></i>任务拆解 (Work Breakdown)</h3>
-                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                            <div class="flex items-center justify-between mb-3">
-                                <span class="font-bold text-gray-800">示例：撰写年度报告</span>
-                                <span class="text-xs text-gray-500">Total: 4h</span>
-                            </div>
-                            <div class="space-y-3 relative">
-                                <!-- Connecting Line -->
-                                <div class="absolute left-2.5 top-2 bottom-2 w-0.5 bg-gray-300"></div>
-
-                                <div class="flex items-center relative z-10">
-                                    <div
-                                        class="w-5 h-5 rounded-full bg-green-500 border-2 border-white shadow-sm flex items-center justify-center text-white text-xs mr-3">
-                                        <i class="fas fa-check"></i>
-                                    </div>
-                                    <div class="flex-1 bg-white p-2 rounded shadow-sm border border-gray-100">
-                                        <p class="text-sm font-medium text-gray-800">1. 收集数据</p>
-                                        <p class="text-xs text-gray-500">导出 Jira、GitLab 统计数据</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center relative z-10">
-                                    <div
-                                        class="w-5 h-5 rounded-full bg-white border-2 border-primary shadow-sm flex items-center justify-center text-primary text-xs mr-3">
-                                        2</div>
-                                    <div class="flex-1 bg-white p-2 rounded shadow-sm border border-gray-100">
-                                        <p class="text-sm font-medium text-gray-800">2. 搭建框架</p>
-                                        <p class="text-xs text-gray-500">确认目录结构和核心亮点</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center relative z-10">
-                                    <div
-                                        class="w-5 h-5 rounded-full bg-white border-2 border-gray-300 shadow-sm flex items-center justify-center text-gray-400 text-xs mr-3">
-                                        3</div>
-                                    <div class="flex-1 bg-white p-2 rounded shadow-sm border border-gray-100">
-                                        <p class="text-sm font-medium text-gray-800">3. 填充内容</p>
-                                        <p class="text-xs text-gray-500">撰写正文，插入图表</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- SOP Library -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
-                                class="fas fa-book text-purple-500 mr-2"></i>SOP 模板库</h3>
-                        <div class="grid grid-cols-2 gap-4">
-                            <button
-                                class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:border-primary hover:bg-blue-50 transition group">
-                                <i class="fas fa-file-invoice text-gray-400 text-2xl mb-2 group-hover:text-primary"></i>
-                                <span class="text-sm font-medium text-gray-700 group-hover:text-primary">周报模板</span>
-                            </button>
-                            <button
-                                class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:border-primary hover:bg-blue-50 transition group">
-                                <i class="fas fa-comments text-gray-400 text-2xl mb-2 group-hover:text-primary"></i>
-                                <span class="text-sm font-medium text-gray-700 group-hover:text-primary">客户沟通话术</span>
-                            </button>
-                            <button
-                                class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:border-primary hover:bg-blue-50 transition group">
-                                <i class="fas fa-code-branch text-gray-400 text-2xl mb-2 group-hover:text-primary"></i>
-                                <span class="text-sm font-medium text-gray-700 group-hover:text-primary">Code Review
-                                    清单</span>
-                            </button>
-                            <button
-                                class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg border-dashed hover:border-primary hover:bg-blue-50 transition group">
-                                <i class="fas fa-plus text-gray-300 text-2xl mb-2 group-hover:text-primary"></i>
-                                <span class="text-sm font-medium text-gray-500 group-hover:text-primary">新增模板</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Review Dashboard -->
-                    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
-                                class="fas fa-chart-bar text-indigo-500 mr-2"></i>月度复盘 (Monthly Review)</h3>
-                        <div class="bg-indigo-50 rounded-lg p-4 mb-4">
-                            <h4 class="font-bold text-indigo-900 mb-2">上月复盘摘要 (3月)</h4>
-                            <ul class="list-disc list-inside text-sm text-indigo-800 space-y-1">
-                                <li>目标完成率：80% (偏差原因：突发项目占用30%时间)</li>
-                                <li>经验沉淀：跨部门沟通需提前2天同步需求文档，避免等待。</li>
-                            </ul>
-                        </div>
+                <!-- Review History List -->
+                <div id="review-list" class="grid grid-cols-1 gap-6">
+                    <!-- Empty State / Dynamic Content -->
+                    <div class="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
+                        <div class="text-gray-400 mb-4"><i class="fas fa-clipboard-check text-4xl opacity-20"></i></div>
+                        <p class="text-gray-500">暂无复盘记录，点击右上角开始你的第一次复盘吧！</p>
                     </div>
                 </div>
             </div>
@@ -1456,8 +1280,214 @@
         </div>
     </main>
 
-    <!-- 引入业务逻辑 -->
+    <!-- Notification Modal -->
+    <div id="notification-modal"
+        class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl p-8 max-w-sm w-full transform transition-all scale-100">
+            <div class="text-center">
+                <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+                    <i class="fas fa-check text-2xl text-green-600"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">专注时间结束！</h3>
+                <p class="text-gray-500 mb-6">你已经完成了本次专注任务，休息一下，喝口水吧。</p>
+                <div class="flex justify-center space-x-4">
+                    <button onclick="closeNotificationModal()"
+                        class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">
+                        知道了
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Goal Modal -->
+    <div id="goal-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full transform transition-all scale-100">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-gray-900" id="goal-modal-title">新增目标 (SMART)</h3>
+                <button onclick="closeGoalModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <input type="hidden" id="goal-id">
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">目标名称 (Specific)</label>
+                    <input type="text" id="goal-title"
+                        class="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                        placeholder="例如：完成前端架构重构">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">关键结果 (Measurable)</label>
+                    <textarea id="goal-result" rows="3"
+                        class="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                        placeholder="例如：1. 减少代码体积 20%&#10;2. 提升首屏加载速度 30%"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">截止日期 (Time-bound)</label>
+                        <input type="date" id="goal-deadline"
+                            class="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">优先级</label>
+                        <select id="goal-priority"
+                            class="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
+                            <option value="high">高 (High)</option>
+                            <option value="medium">中 (Medium)</option>
+                            <option value="low">低 (Low)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">当前进度</label>
+                        <div class="flex items-center">
+                            <input type="range" id="goal-progress" min="0" max="100" step="5" value="0"
+                                class="w-full mr-2"
+                                oninput="document.getElementById('goal-progress-val').textContent = this.value + '%'">
+                            <span id="goal-progress-val" class="text-sm text-gray-500 w-10">0%</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">状态</label>
+                        <select id="goal-status"
+                            class="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
+                            <option value="pending">未开始</option>
+                            <option value="in_progress">进行中</option>
+                            <option value="completed">已完成</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-end space-x-3">
+                <button onclick="closeGoalModal()"
+                    class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">取消</button>
+                <button onclick="saveGoal()"
+                    class="px-4 py-2 bg-primary text-white rounded-md text-sm font-medium hover:bg-indigo-700 shadow-sm">保存目标</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Review Modal -->
+    <div id="review-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center z-50">
+        <div
+            class="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full transform transition-all scale-100 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-gray-900" id="review-modal-title">每周复盘 (Weekly Review)</h3>
+                <button onclick="closeReviewModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <input type="hidden" id="review-id">
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">复盘周期</label>
+                        <input type="week" id="review-week"
+                            class="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">本周评分 (1-5)</label>
+                        <div class="flex items-center space-x-4 mt-2">
+                            <input type="range" id="review-rating" min="1" max="5" step="1" value="3" class="w-full"
+                                oninput="document.getElementById('review-rating-val').textContent = this.value + ' 分'">
+                            <span id="review-rating-val" class="text-sm font-bold text-primary w-12">3 分</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">🎉 本周成就 (What went well?)</label>
+                    <textarea id="review-achievements" rows="3"
+                        class="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                        placeholder="列出本周完成的重要事项或里程碑..."></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">🚧 遇到的挑战 (What didn't go well?)</label>
+                    <textarea id="review-challenges" rows="3"
+                        class="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                        placeholder="描述本周遇到的阻碍或未完成的任务..."></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">💡 经验与改进 (Lessons Learned)</label>
+                    <textarea id="review-learnings" rows="3"
+                        class="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                        placeholder="从中学到了什么？下周如何改进？"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">🎯 下周重点 (Next Week's Focus)</label>
+                    <textarea id="review-next-focus" rows="2"
+                        class="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                        placeholder="下周最重要的 1-3 件事..."></textarea>
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-end space-x-3">
+                <button onclick="closeReviewModal()"
+                    class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">取消</button>
+                <button onclick="saveReview()"
+                    class="px-4 py-2 bg-primary text-white rounded-md text-sm font-medium hover:bg-indigo-700 shadow-sm">保存复盘</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
     <script src="js/script.js"></script>
+    <!-- Energy Config Modal -->
+    <div id="energy-config-modal"
+        class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-gray-900">配置精力曲线</h3>
+                <button onclick="closeEnergyConfigModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">黄金时间 (High Energy)</label>
+                    <div class="flex items-center space-x-2">
+                        <input type="time" id="config-peak-start"
+                            class="border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary text-sm">
+                        <span>至</span>
+                        <input type="time" id="config-peak-end"
+                            class="border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary text-sm">
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">精力最充沛的时段，适合处理核心任务。</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">行政时间 (Low Energy)</label>
+                    <div class="flex items-center space-x-2">
+                        <input type="time" id="config-dip-start"
+                            class="border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary text-sm">
+                        <span>至</span>
+                        <input type="time" id="config-dip-end"
+                            class="border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary text-sm">
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">精力较低的时段，适合处理琐碎事务。</p>
+                </div>
+                <div class="pt-4 flex justify-end space-x-3">
+                    <button onclick="closeEnergyConfigModal()"
+                        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm font-medium">取消</button>
+                    <button onclick="saveEnergyConfig()"
+                        class="px-4 py-2 bg-primary text-white rounded-md hover:bg-indigo-700 text-sm font-medium">保存配置</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>
