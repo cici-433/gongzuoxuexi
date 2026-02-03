@@ -43,6 +43,9 @@ if (tasks.length === 0) {
 
 // Load Drafts on Page Load
 document.addEventListener('DOMContentLoaded', () => {
+    // Try to restore from disk (server-side persistence)
+    loadFromDisk();
+
     // Restore Drafts
     const draft = JSON.parse(localStorage.getItem(STORAGE_KEY_DRAFT) || '{}');
     if (document.getElementById('daily-done')) {
@@ -133,7 +136,7 @@ function showSection(sectionId) {
     // 隐藏所有 section
     const sections = [
         'dashboard', 'reports', 'smart', 'time-energy', 'review',
-        'project-scope', 'project-quality', 'project-risk',
+        'project-quality',
         'team-okr', 'team-raci', 'team-sync', 'team-growth'
     ];
     sections.forEach(id => {
@@ -153,6 +156,11 @@ function showSection(sectionId) {
     // 显示目标 section
     const targetEl = document.getElementById(sectionId + '-section');
     if (targetEl) targetEl.classList.remove('hidden-section');
+
+    // 特殊逻辑：渲染 App 质量指标
+    if (sectionId === 'project-quality') {
+        renderAppQualityMetrics();
+    }
 
     // 高亮当前 nav
     const activeLink = document.querySelector(`.nav-link[data-target="${sectionId}"]`);
@@ -1257,4 +1265,384 @@ function deleteReview(id) {
     localStorage.setItem(STORAGE_KEY_REVIEWS, JSON.stringify(reviews));
     renderReviews();
     showToast('记录已删除');
+}
+
+// ==========================================
+// Mobile App Quality Metrics Management
+// ==========================================
+
+const appQualityMetrics = [
+    {
+        category: "性能体验 (Performance)",
+        icon: "fas fa-tachometer-alt",
+        colorClass: "purple",
+        items: [
+            {
+                name: "冷启动耗时 (Cold Start)",
+                target: "< 2s (优秀), < 5s (达标)",
+                scheme: "Process Start -> Activity Displayed.",
+                android_impl: "1. **测量工具**: `adb shell am start -W package/activity` (TotalTime)。\n2. **代码打点**: 在 `Application.attachBaseContext` 开始记录，在首个 Activity `onWindowFocusChanged` 结束。\n3. **优化**: 懒加载初始化任务，避免主线程 I/O。",
+                flutter_impl: "1. **测量工具**: `flutter run --trace-startup --profile`。\n2. **指标**: `Time to First Frame`。\n3. **优化**: 减少 `main()` 中的同步操作，使用 `Deferred Components`。"
+            },
+            {
+                name: "热启动耗时 (Warm Start)",
+                target: "< 500ms",
+                scheme: "Activity.onResume -> View 绘制完成。",
+                android_impl: "1. **测量**: 记录 `onStart` 到 `onResume` 耗时。\n2. **优化**: 减少 `onResume` 中的繁重工作，保持视图层级扁平。",
+                flutter_impl: "1. **测量**: 路由跳转时间。\n2. **优化**: 保持 `build` 方法轻量，避免不必要的 `setState`。"
+            },
+            {
+                name: "页面流畅度 (FPS/Freeze)",
+                target: "稳定 60 FPS, 冻帧率 < 0.1%",
+                scheme: "监控掉帧与卡顿。",
+                android_impl: "1. **工具**: `Choreographer.FrameCallback` 监控帧间隔。\n2. **冻帧**: 主线程卡顿 > 700ms (连续掉帧 42+)。\n3. **BlockCanary**: 监控主线程消息处理耗时。",
+                flutter_impl: "1. **工具**: `SchedulerBinding.instance.addTimingsCallback`。\n2. **指标**: `buildDuration` (构建耗时) 和 `rasterDuration` (光栅化耗时)。\n3. **DevTools**: 使用 Performance Overlay 查看。"
+            },
+            {
+                name: "页面秒开率",
+                target: "> 90% (1s 内加载完成)",
+                scheme: "路由跳转 -> 首屏内容可见。",
+                android_impl: "1. **打点**: 路由开始 -> 视图绘制完成 (`ViewTreeObserver.OnGlobalLayoutListener`)。\n2. **优化**: 数据预加载，骨架屏，异步 Inflate。",
+                flutter_impl: "1. **打点**: `Navigator.push` -> `addPostFrameCallback`。\n2. **优化**: 预缓存图片/数据，分帧渲染。"
+            }
+        ]
+    },
+    {
+        category: "稳定性 (Stability)",
+        icon: "fas fa-shield-alt",
+        colorClass: "red",
+        items: [
+            {
+                name: "崩溃率 (Crash Rate)",
+                target: "< 0.1% (UV)",
+                scheme: "全局异常捕获。",
+                android_impl: "1. **Java**: `Thread.setDefaultUncaughtExceptionHandler`。\n2. **Native**: 监听信号量 (SIGSEGV 等)，使用 Breakpad/Crasher。\n3. **平台**: Firebase Crashlytics, Bugly。",
+                flutter_impl: "1. **Dart**: `FlutterError.onError` (框架层) + `PlatformDispatcher.instance.onError` (异步层)。\n2. **Native**: 仍需 Android/iOS 原生捕获兜底。"
+            },
+            {
+                name: "ANR 率 (卡死)",
+                target: "< 0.1%",
+                scheme: "主线程超时监控。",
+                android_impl: "1. **原理**: 监控主线程 `Looper` 消息处理时间 > 5s。\n2. **实现**: Watchdog 线程定时向主线程 Handler 发送消息并检测回调。\n3. **解决**: 严禁主线程 I/O、数据库操作。",
+                flutter_impl: "1. **原理**: Dart 单线程模型，监控 Isolate 事件循环延迟。\n2. **检测**: 计算两个 Timer 之间的实际间隔差。\n3. **解决**: 耗时计算放入 `compute` (Isolate)。"
+            },
+            {
+                name: "OOM 率 (内存溢出)",
+                target: "< 0.05%",
+                scheme: "内存峰值监控。",
+                android_impl: "1. **监控**: `ComponentCallbacks2.onTrimMemory` 监听系统低内存警告。\n2. **治理**: LeakCanary 检测泄漏，大图压缩，及时释放引用。",
+                flutter_impl: "1. **监控**: 观察 `ImageCache` 大小。\n2. **治理**: 使用 `cached_network_image` 并限制缓存大小，及时 `dispose` 控制器。"
+            },
+            {
+                name: "网络请求成功率",
+                target: "> 99.5%",
+                scheme: "业务接口请求成功 / 总请求数。",
+                android_impl: "1. **拦截器**: OkHttp Interceptor 统一统计。\n2. **策略**: 失败自动重试 (Exponential Backoff)，多域名 IP 直连 (HTTPDNS)。",
+                flutter_impl: "1. **拦截器**: Dio Interceptor。\n2. **策略**: 离线缓存 (Hive/Sqlite)，弱网优化。"
+            }
+        ]
+    },
+    {
+        category: "资源消耗 (Resource)",
+        icon: "fas fa-battery-half",
+        colorClass: "yellow",
+        items: [
+            {
+                name: "安装包体积 (APK Size)",
+                target: "< 50MB",
+                scheme: "减小包体大小。",
+                android_impl: "1. **R8/ProGuard**: 开启代码混淆与资源压缩 (`shrinkResources`)。\n2. **资源**: 图片转 WebP，使用 VectorDrawable。\n3. **架构**: App Bundle (.aab) 动态分发，So 库动态加载。",
+                flutter_impl: "1. **命令**: `flutter build apk --split-per-abi` (分架构打包)。\n2. **混淆**: `--obfuscate --split-debug-info`。\n3. **资源**: 移除未使用的字体与图标。"
+            },
+            {
+                name: "内存占用 (PSS)",
+                target: "< 300MB",
+                scheme: "应用运行时内存。",
+                android_impl: "1. **指标**: PSS (Proportional Set Size)。\n2. **工具**: Android Profiler, `adb shell dumpsys meminfo`。\n3. **策略**: 避免内存抖动 (Memory Churn)，复用对象池。",
+                flutter_impl: "1. **工具**: Dart DevTools Memory 视图。\n2. **泄漏**: 检查未释放的 StreamSubscription 和 AnimationController。"
+            },
+            {
+                name: "耗电量",
+                target: "后台 < 2% / 小时",
+                scheme: "后台耗电监控。",
+                android_impl: "1. **工具**: Battery Historian。\n2. **策略**: 避免频繁 WakeLock，使用 WorkManager 批处理任务，减少后台定位频率。",
+                flutter_impl: "1. **策略**: 避免在后台运行高频 Timer 或 Animation。\n2. **Native**: 同样需遵循 Android 后台限制规范。"
+            }
+        ]
+    },
+    {
+        category: "业务质量 (Business)",
+        icon: "fas fa-briefcase",
+        colorClass: "blue",
+        items: [
+            {
+                name: "核心路径转化率",
+                target: "> 85%",
+                scheme: "全链路埋点 (PV/UV)。",
+                android_impl: "1. **埋点**: 自研埋点 SDK 或神策/Umeng。\n2. **分析**: 构建漏斗模型，分析每一步流失率。",
+                flutter_impl: "1. **埋点**: 封装统一的 Analytics Service。\n2. **Context**: 携带页面来源参数。"
+            },
+            {
+                name: "图片/资源加载成功率",
+                target: "> 99.9%",
+                scheme: "CDN 可用性监控。",
+                android_impl: "1. **库**: Glide/Fresco Listener 监控加载结果。\n2. **降级**: 主 CDN 失败自动切换备用 CDN 域名。",
+                flutter_impl: "1. **组件**: `CachedNetworkImage` 的 `errorWidget` 回调。\n2. **监控**: 上报加载失败异常。"
+            }
+        ]
+    }
+];
+
+function renderAppQualityMetrics() {
+    const container = document.getElementById('app-quality-metrics-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    appQualityMetrics.forEach(group => {
+        const groupEl = document.createElement('div');
+        groupEl.className = `bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden`;
+
+        const header = `
+            <div class="px-6 py-4 bg-${group.colorClass}-50 border-b border-${group.colorClass}-100 flex items-center">
+                <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-${group.colorClass}-500 shadow-sm mr-4">
+                    <i class="${group.icon}"></i>
+                </div>
+                <h3 class="text-lg font-bold text-gray-800">${group.category}</h3>
+            </div>
+        `;
+        groupEl.innerHTML = header;
+
+        const table = document.createElement('table');
+        table.className = 'w-full text-left border-collapse';
+        table.innerHTML = `
+            <thead>
+                <tr class="bg-gray-50 border-b border-gray-100 text-xs uppercase text-gray-500 font-semibold">
+                    <th class="px-6 py-3 w-1/4">指标名称</th>
+                    <th class="px-6 py-3 w-1/4">目标值</th>
+                    <th class="px-6 py-3 w-1/2">采集/实现方案</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                ${group.items.map((item, itemIndex) => `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="py-3 px-6 font-medium text-gray-900">${item.name}</td>
+                        <td class="py-3 px-6">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                ${item.target}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-gray-600 font-mono text-xs leading-relaxed">
+                            <div class="flex justify-between items-center">
+                                <span>${item.scheme}</span>
+                                <button onclick="openMetricDetailModal(${appQualityMetrics.indexOf(group)}, ${itemIndex})" 
+                                    class="ml-2 text-primary hover:text-indigo-800 text-xs font-bold focus:outline-none flex-shrink-0">
+                                    <i class="fas fa-code mr-1"></i>实现方案
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        `;
+        groupEl.appendChild(table);
+
+        container.appendChild(groupEl);
+    });
+}
+
+// ==========================================
+// Data Management (Import/Export)
+// ==========================================
+
+function openDataModal() {
+    const modal = document.getElementById('data-modal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeDataModal() {
+    const modal = document.getElementById('data-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function exportData() {
+    const data = {};
+    // Iterate over all localStorage keys
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        // Only backup keys related to our app (nexus_ prefix)
+        if (key.startsWith('nexus_')) {
+            data[key] = localStorage.getItem(key);
+        }
+    }
+
+    if (Object.keys(data).length === 0) {
+        alert("没有可导出的数据 (No data found to export).");
+        return;
+    }
+
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    a.download = `nexus_backup_${date}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showToast('数据导出成功');
+}
+
+function importData(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            let importCount = 0;
+
+            Object.keys(data).forEach(key => {
+                if (key.startsWith('nexus_')) {
+                    localStorage.setItem(key, data[key]);
+                    importCount++;
+                }
+            });
+
+            if (importCount > 0) {
+                alert(`成功导入 ${importCount} 项数据！页面将刷新。`);
+                location.reload();
+            } else {
+                alert("文件中未找到有效数据 (No valid 'nexus_' keys found).");
+            }
+        } catch (error) {
+            console.error(error);
+            alert("文件解析失败，请确保是有效的 JSON 备份文件。");
+        }
+    };
+    reader.readAsText(file);
+    // Reset input to allow re-importing same file if needed
+    input.value = '';
+}
+
+// ==========================================
+// Disk Sync (Server-Side Persistence)
+// ==========================================
+
+let syncTimeout = null;
+const SYNC_DELAY = 1000; // 1 second debounce
+
+// Auto-save wrapper
+function autoSave() {
+    // Show "Saving..." status if we had a UI element for it
+    const btn = document.querySelector('button[onclick="syncToDisk()"] span');
+    if (btn) btn.textContent = "保存中... (Saving)";
+
+    if (syncTimeout) clearTimeout(syncTimeout);
+    syncTimeout = setTimeout(() => {
+        syncToDisk(true);
+    }, SYNC_DELAY);
+}
+
+async function syncToDisk(silent = false) {
+    const data = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith('nexus_')) {
+            data[key] = localStorage.getItem(key);
+        }
+    }
+
+    if (Object.keys(data).length === 0) return;
+
+    try {
+        const response = await fetch('/api/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            if (!silent) showToast('数据已成功同步到本地磁盘！');
+            // Update UI to show saved
+            const btn = document.querySelector('button[onclick="syncToDisk()"] span');
+            if (btn) btn.textContent = "已自动保存 (Saved)";
+            setTimeout(() => {
+                if (btn) btn.textContent = "保存到本地 (Sync)";
+            }, 3000);
+        } else {
+            console.error('Save failed');
+        }
+    } catch (error) {
+        console.error('Sync error:', error);
+        if (!silent) alert('自动保存失败：请确保 python server.py 正在运行。');
+    }
+}
+
+// Override localStorage.setItem to trigger auto-save
+const originalSetItem = localStorage.setItem;
+localStorage.setItem = function (key, value) {
+    originalSetItem.apply(this, arguments);
+    if (key.startsWith('nexus_')) {
+        autoSave();
+    }
+};
+
+// Try to load data from disk on startup if localStorage is empty or user requests it
+async function loadFromDisk() {
+    try {
+        const response = await fetch('/api/data');
+        if (response.ok) {
+            const data = await response.json();
+            if (Object.keys(data).length > 0) {
+                let hasNewData = false;
+                Object.keys(data).forEach(key => {
+                    // Only restore if localStorage is missing this key (prevent overwrite)
+                    // This allows "Recover" on a fresh browser/port
+                    if (!localStorage.getItem(key)) {
+                        localStorage.setItem(key, data[key]);
+                        hasNewData = true;
+                    }
+                });
+
+                if (hasNewData) {
+                    showToast('已自动恢复服务器备份数据');
+                    setTimeout(() => location.reload(), 1000);
+                }
+            }
+        }
+    } catch (e) {
+        console.log('No backend server detected or no data file.');
+    }
+}
+
+// ==========================================
+// Metric Detail Modal Logic
+// ==========================================
+
+function openMetricDetailModal(groupIndex, itemIndex) {
+    const item = appQualityMetrics[groupIndex].items[itemIndex];
+    document.getElementById('metric-detail-title').textContent = item.name + ' - 实现详情';
+
+    // Default fallback if no specific impl provided
+    const defaultAndroid = "暂无特定 Android 实现说明，请参考通用方案。";
+    const defaultFlutter = "暂无特定 Flutter 实现说明，请参考通用方案。";
+
+    document.getElementById('metric-android-impl').textContent = item.android_impl || defaultAndroid;
+    document.getElementById('metric-flutter-impl').textContent = item.flutter_impl || defaultFlutter;
+
+    const modal = document.getElementById('metric-detail-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeMetricDetailModal() {
+    const modal = document.getElementById('metric-detail-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
 }

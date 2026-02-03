@@ -76,27 +76,11 @@
                 <!-- 项目维度 -->
                 <li class="px-3 py-2 mt-4 text-gray-400 text-xs font-bold uppercase tracking-wider">项目交付 (Project)</li>
                 <li>
-                    <a href="#" onclick="showSection('project-scope')"
-                        class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 group transition-colors"
-                        data-target="project-scope">
-                        <i class="fas fa-sitemap w-6 text-center text-blue-400 group-hover:text-white"></i>
-                        <span class="ml-3">范围与进度 (Scope)</span>
-                    </a>
-                </li>
-                <li>
                     <a href="#" onclick="showSection('project-quality')"
                         class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 group transition-colors"
                         data-target="project-quality">
-                        <i class="fas fa-check-double w-6 text-center text-green-400 group-hover:text-white"></i>
-                        <span class="ml-3">质量与资源 (Quality)</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" onclick="showSection('project-risk')"
-                        class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 group transition-colors"
-                        data-target="project-risk">
-                        <i class="fas fa-exclamation-triangle w-6 text-center text-red-400 group-hover:text-white"></i>
-                        <span class="ml-3">风险与变更 (Risk)</span>
+                        <i class="fas fa-mobile-alt w-6 text-center text-green-400 group-hover:text-white"></i>
+                        <span class="ml-3">App质量指标 (Quality)</span>
                     </a>
                 </li>
 
@@ -138,6 +122,16 @@
         </nav>
 
         <div class="p-4 border-t border-gray-700">
+            <button onclick="openDataModal()"
+                class="flex items-center w-full text-left hover:bg-gray-700 p-2 rounded transition-colors mb-2">
+                <i class="fas fa-database text-gray-400 w-6 text-center"></i>
+                <span class="ml-3 text-sm text-gray-300">数据管理 (Backup)</span>
+            </button>
+            <button onclick="syncToDisk()"
+                class="flex items-center w-full text-left hover:bg-gray-700 p-2 rounded transition-colors mb-4 group">
+                <i class="fas fa-save text-blue-400 w-6 text-center group-hover:animate-pulse"></i>
+                <span class="ml-3 text-sm text-blue-300 group-hover:text-white">保存到本地 (Sync)</span>
+            </button>
             <div class="flex items-center">
                 <img class="h-8 w-8 rounded-full object-cover border-2 border-primary"
                     src="https://ui-avatars.com/api/?name=Chen+Xunlin&background=random" alt="User Avatar">
@@ -538,11 +532,13 @@
 
                         <div class="mt-8 grid grid-cols-2 gap-4">
                             <div class="bg-green-50 p-3 rounded border border-green-100">
-                                <h4 class="text-xs font-bold text-green-800 uppercase mb-1">黄金时间 (09:00 - 11:00)</h4>
+                                <h4 id="energy-peak-text" class="text-xs font-bold text-green-800 uppercase mb-1">黄金时间
+                                    (09:00 - 11:00)</h4>
                                 <p class="text-sm text-gray-600">适合：深度思考、创意写作、核心代码开发。</p>
                             </div>
                             <div class="bg-yellow-50 p-3 rounded border border-yellow-100">
-                                <h4 class="text-xs font-bold text-yellow-800 uppercase mb-1">行政时间 (16:00 - 17:00)</h4>
+                                <h4 id="energy-dip-text" class="text-xs font-bold text-yellow-800 uppercase mb-1">行政时间
+                                    (16:00 - 17:00)</h4>
                                 <p class="text-sm text-gray-600">适合：回复邮件、报销流程、整理文档。</p>
                             </div>
                         </div>
@@ -593,340 +589,19 @@
 
             <!-- Project Management Sections -->
 
-            <!-- 1. Scope & Schedule Section -->
-            <div id="project-scope-section" class="hidden-section">
-                <div class="mb-6">
-                    <h2 class="text-3xl font-bold text-gray-900">范围与进度 (Scope & Schedule)</h2>
-                    <p class="text-gray-500 mt-1">明确项目边界，可视化追踪关键路径与预算。</p>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- WBS (Work Breakdown Structure) -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
-                                class="fas fa-sitemap text-blue-500 mr-2"></i>WBS 工作分解 (电商系统开发)</h3>
-                        <div class="tree-structure text-sm">
-                            <ul class="space-y-2">
-                                <li class="font-bold text-gray-800"><i
-                                        class="fas fa-folder-open text-yellow-400 mr-2"></i>1.0 电商系统 V1.0</li>
-                                <ul class="pl-6 space-y-2 border-l border-gray-200 ml-2">
-                                    <li>
-                                        <div class="flex items-center">
-                                            <span class="w-4 border-t border-gray-200 mr-2"></span>
-                                            <i class="fas fa-folder text-blue-300 mr-2"></i>
-                                            <span class="font-medium text-gray-700">1.1 前端界面</span>
-                                        </div>
-                                        <ul class="pl-8 mt-1 space-y-1 text-gray-600">
-                                            <li class="flex items-center"><span
-                                                    class="w-2 h-2 rounded-full bg-green-400 mr-2"></span>首页/商品列表页
-                                                (Alice)</li>
-                                            <li class="flex items-center"><span
-                                                    class="w-2 h-2 rounded-full bg-gray-300 mr-2"></span>购物车/结算页
-                                                (Pending)</li>
-                                        </ul>
-                                    </li>
-                                    <li>
-                                        <div class="flex items-center">
-                                            <span class="w-4 border-t border-gray-200 mr-2"></span>
-                                            <i class="fas fa-folder text-blue-300 mr-2"></i>
-                                            <span class="font-medium text-gray-700">1.2 后端逻辑</span>
-                                        </div>
-                                        <ul class="pl-8 mt-1 space-y-1 text-gray-600">
-                                            <li class="flex items-center"><span
-                                                    class="w-2 h-2 rounded-full bg-green-400 mr-2"></span>用户认证 API (Bob)
-                                            </li>
-                                            <li class="flex items-center"><span
-                                                    class="w-2 h-2 rounded-full bg-yellow-400 mr-2"></span>订单状态机 (Bob)
-                                            </li>
-                                        </ul>
-                                    </li>
-                                    <li>
-                                        <div class="flex items-center">
-                                            <span class="w-4 border-t border-gray-200 mr-2"></span>
-                                            <i class="fas fa-folder text-blue-300 mr-2"></i>
-                                            <span class="font-medium text-gray-700">1.3 数据库设计</span>
-                                        </div>
-                                    </li>
-                                </ul>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <!-- Progress & Budget -->
-                    <div class="space-y-6">
-                        <!-- Burndown Chart Placeholder -->
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-lg font-bold text-gray-800"><i
-                                        class="fas fa-chart-area text-purple-500 mr-2"></i>燃尽图 (Burndown)</h3>
-                                <span class="text-xs text-gray-500">Sprint 4 (4/1 - 4/14)</span>
-                            </div>
-                            <div
-                                class="h-48 bg-gray-50 rounded flex items-center justify-center text-gray-400 border border-dashed border-gray-200 relative">
-                                <!-- Simple simulated chart using CSS/HTML for visual -->
-                                <div
-                                    class="absolute bottom-0 left-0 right-0 top-0 p-4 flex items-end justify-between px-8">
-                                    <div class="h-full w-0.5 bg-gray-200 absolute left-8 top-0"></div>
-                                    <div class="w-full h-0.5 bg-gray-200 absolute left-8 bottom-4"></div>
-
-                                    <!-- Points -->
-                                    <div class="w-2 h-2 bg-purple-500 rounded-full mb-[80%] relative z-10"></div>
-                                    <div class="w-2 h-2 bg-purple-500 rounded-full mb-[60%] relative z-10"></div>
-                                    <div class="w-2 h-2 bg-purple-500 rounded-full mb-[50%] relative z-10"></div>
-                                    <div class="w-2 h-2 bg-purple-500 rounded-full mb-[20%] relative z-10"></div>
-                                    <div class="w-2 h-2 bg-green-500 rounded-full mb-[10%] relative z-10"></div>
-
-                                    <!-- Trend Line (SVG) -->
-                                    <svg class="absolute inset-0 h-full w-full pointer-events-none"
-                                        preserveAspectRatio="none">
-                                        <polyline points="32,30 100,60 180,75 260,120 340,135" fill="none"
-                                            stroke="#A78BFA" stroke-width="2" />
-                                        <line x1="32" y1="30" x2="340" y2="150" stroke="#E5E7EB" stroke-width="1"
-                                            stroke-dasharray="4" />
-                                    </svg>
-                                </div>
-                                <span class="absolute top-2 right-4 text-xs text-green-600 font-bold">进度正常</span>
-                            </div>
-                        </div>
-
-                        <!-- Budget Monitor -->
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                            <h3 class="text-lg font-bold text-gray-800 mb-4"><i
-                                    class="fas fa-coins text-yellow-500 mr-2"></i>预算监控 (Budget)</h3>
-                            <div class="mb-2 flex justify-between text-sm">
-                                <span class="text-gray-600">总预算: ¥500,000</span>
-                                <span class="text-gray-900 font-bold">已用: ¥300,000 (60%)</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-4 mb-2 overflow-hidden">
-                                <div class="bg-yellow-500 h-4 rounded-full flex items-center justify-center text-[10px] text-white font-bold"
-                                    style="width: 60%">60%</div>
-                            </div>
-                            <p class="text-xs text-red-500 mt-2"><i
-                                    class="fas fa-exclamation-circle mr-1"></i>预警：剩余40%需重点控制采购成本（服务器集群扩容）。</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- 2. Quality & Resources Section -->
             <div id="project-quality-section" class="hidden-section">
-                <div class="mb-6">
-                    <h2 class="text-3xl font-bold text-gray-900">质量与资源 (Quality & Resources)</h2>
-                    <p class="text-gray-500 mt-1">定义交付标准，优化资源配置。</p>
+                <div class="mb-6 flex justify-between items-end">
+                    <div>
+                        <h2 class="text-3xl font-bold text-gray-900">移动 App 质量指标 (Mobile Quality Metrics)</h2>
+                        <p class="text-gray-500 mt-1">定义核心体验指标，明确采集与优化方案。</p>
+                    </div>
+                    <button onclick="renderAppQualityMetrics()" class="text-primary hover:underline text-sm"><i
+                            class="fas fa-sync-alt mr-1"></i>刷新数据</button>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Quality Standards -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
-                                class="fas fa-clipboard-check text-green-500 mr-2"></i>质量验收标准 (DoD)</h3>
-                        <div class="space-y-4">
-                            <div class="flex items-start p-3 bg-green-50 rounded border border-green-100">
-                                <i class="fas fa-bug text-green-600 mt-1 mr-3"></i>
-                                <div>
-                                    <h4 class="text-sm font-bold text-green-900">软件缺陷率</h4>
-                                    <p class="text-sm text-green-800">核心流程 Bug 率低于 <span
-                                            class="font-bold">0.1%</span>（每千行代码）。P0级 Bug 必须归零。</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start p-3 bg-blue-50 rounded border border-blue-100">
-                                <i class="fas fa-smile text-blue-600 mt-1 mr-3"></i>
-                                <div>
-                                    <h4 class="text-sm font-bold text-blue-900">用户满意度 (CSAT)</h4>
-                                    <p class="text-sm text-blue-800">UAT 验收评分需达到 <span
-                                            class="font-bold">4.8分</span>（满分5分）。</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start p-3 bg-purple-50 rounded border border-purple-100">
-                                <i class="fas fa-tachometer-alt text-purple-600 mt-1 mr-3"></i>
-                                <div>
-                                    <h4 class="text-sm font-bold text-purple-900">性能指标</h4>
-                                    <p class="text-sm text-purple-800">API 响应时间 < 200ms (99th percentile)。</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Resource Allocation Matrix -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
-                                class="fas fa-users-cog text-indigo-500 mr-2"></i>资源分配矩阵</h3>
-                        <table class="min-w-full text-sm">
-                            <thead>
-                                <tr class="bg-gray-50 border-b">
-                                    <th class="text-left py-2 px-3 text-gray-500 font-medium">成员</th>
-                                    <th class="text-left py-2 px-3 text-gray-500 font-medium">角色</th>
-                                    <th class="text-left py-2 px-3 text-gray-500 font-medium">当前负荷</th>
-                                    <th class="text-left py-2 px-3 text-gray-500 font-medium">重点任务</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100">
-                                <tr>
-                                    <td class="py-3 px-3 flex items-center">
-                                        <img src="https://ui-avatars.com/api/?name=Chen&background=random"
-                                            class="w-6 h-6 rounded-full mr-2">
-                                        <span class="font-bold text-gray-800">Chen</span>
-                                    </td>
-                                    <td class="text-gray-600">Tech Lead</td>
-                                    <td><span class="px-2 py-0.5 rounded bg-red-100 text-red-800 text-xs">95%
-                                            (High)</span></td>
-                                    <td class="text-gray-600">架构设计、核心鉴权</td>
-                                </tr>
-                                <tr>
-                                    <td class="py-3 px-3 flex items-center">
-                                        <img src="https://ui-avatars.com/api/?name=Alice&background=random"
-                                            class="w-6 h-6 rounded-full mr-2">
-                                        <span class="font-bold text-gray-800">Alice</span>
-                                    </td>
-                                    <td class="text-gray-600">Frontend</td>
-                                    <td><span class="px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs">70%
-                                            (OK)</span></td>
-                                    <td class="text-gray-600">商品列表页</td>
-                                </tr>
-                                <tr>
-                                    <td class="py-3 px-3 flex items-center">
-                                        <img src="https://ui-avatars.com/api/?name=Bob&background=random"
-                                            class="w-6 h-6 rounded-full mr-2">
-                                        <span class="font-bold text-gray-800">Bob</span>
-                                    </td>
-                                    <td class="text-gray-600">Backend</td>
-                                    <td><span class="px-2 py-0.5 rounded bg-yellow-100 text-yellow-800 text-xs">85%
-                                            (Busy)</span></td>
-                                    <td class="text-gray-600">订单接口</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <div class="mt-4 p-3 bg-yellow-50 rounded text-xs text-yellow-800 border border-yellow-100">
-                            <strong>策略调整：</strong> Chen 的负荷过高，建议将“非核心模块代码Review”任务指派给 Bob。
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 3. Risk & Change Section -->
-            <div id="project-risk-section" class="hidden-section">
-                <div class="mb-6">
-                    <h2 class="text-3xl font-bold text-gray-900">风险与变更 (Risk & Change)</h2>
-                    <p class="text-gray-500 mt-1">主动管理潜在风险，规范化需求变更流程。</p>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Risk Register -->
-                    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
-                                class="fas fa-shield-alt text-red-500 mr-2"></i>风险登记册 (Risk Register)</h3>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full text-sm">
-                                <thead>
-                                    <tr class="bg-gray-50 border-b">
-                                        <th class="text-left py-2 px-4 text-gray-500 font-medium">风险描述</th>
-                                        <th class="text-left py-2 px-4 text-gray-500 font-medium">概率/影响</th>
-                                        <th class="text-left py-2 px-4 text-gray-500 font-medium">应对策略 (Plan B)</th>
-                                        <th class="text-left py-2 px-4 text-gray-500 font-medium">状态</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-100">
-                                    <tr>
-                                        <td class="py-3 px-4">
-                                            <p class="font-bold text-gray-800">供应商延迟交货</p>
-                                            <p class="text-xs text-gray-500">服务器硬件可能因物流延期</p>
-                                        </td>
-                                        <td class="py-3 px-4">
-                                            <span class="block text-red-600 font-bold">High (30%)</span>
-                                            <span class="text-xs text-gray-500">影响上线时间 1周</span>
-                                        </td>
-                                        <td class="py-3 px-4 text-gray-700">
-                                            启动备选方案：暂时租用 AWS 云服务器过渡。
-                                        </td>
-                                        <td class="py-3 px-4">
-                                            <span class="px-2 py-1 rounded bg-red-100 text-red-800 text-xs">监控中</span>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="py-3 px-4">
-                                            <p class="font-bold text-gray-800">UI 设计稿变更</p>
-                                            <p class="text-xs text-gray-500">首页布局未最终确认</p>
-                                        </td>
-                                        <td class="py-3 px-4">
-                                            <span class="block text-yellow-600 font-bold">Med (50%)</span>
-                                            <span class="text-xs text-gray-500">影响前端开发 2天</span>
-                                        </td>
-                                        <td class="py-3 px-4 text-gray-700">
-                                            优先开发后端 API，等待 UI 冻结。
-                                        </td>
-                                        <td class="py-3 px-4">
-                                            <span
-                                                class="px-2 py-1 rounded bg-green-100 text-green-800 text-xs">已规避</span>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Issue Escalation Mechanism -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
-                                class="fas fa-level-up-alt text-orange-500 mr-2"></i>问题升级机制</h3>
-                        <div class="relative pl-4 border-l-2 border-gray-200 space-y-6">
-                            <div class="relative">
-                                <div
-                                    class="absolute -left-5 top-1 h-3 w-3 rounded-full bg-green-500 border-2 border-white">
-                                </div>
-                                <h4 class="text-sm font-bold text-gray-800">Level 1: 项目组内解决</h4>
-                                <p class="text-xs text-gray-500">日常技术问题、非关键路径延误。</p>
-                            </div>
-                            <div class="relative">
-                                <div
-                                    class="absolute -left-5 top-1 h-3 w-3 rounded-full bg-yellow-500 border-2 border-white">
-                                </div>
-                                <h4 class="text-sm font-bold text-gray-800">Level 2: 上报技术总监 (24h 无解)</h4>
-                                <p class="text-xs text-gray-500">技术难题阻塞进度超过 24小时，或涉及跨部门协调。</p>
-                            </div>
-                            <div class="relative">
-                                <div
-                                    class="absolute -left-5 top-1 h-3 w-3 rounded-full bg-red-500 border-2 border-white">
-                                </div>
-                                <h4 class="text-sm font-bold text-gray-800">Level 3: 上报 CTO/CEO</h4>
-                                <p class="text-xs text-gray-500">重大风险（如预算超支 >20%、核心成员离职）。</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Change Control Process -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h3 class="text-lg font-bold text-gray-800 mb-4"><i
-                                class="fas fa-exchange-alt text-blue-500 mr-2"></i>变更管理流程</h3>
-                        <div class="flex items-center justify-between text-center text-xs">
-                            <div class="flex-1">
-                                <div
-                                    class="w-10 h-10 mx-auto bg-blue-50 rounded-full flex items-center justify-center text-blue-600 mb-2">
-                                    <i class="fas fa-file-alt"></i>
-                                </div>
-                                <p class="font-medium">1. 提交申请</p>
-                            </div>
-                            <div class="text-gray-300"><i class="fas fa-arrow-right"></i></div>
-                            <div class="flex-1">
-                                <div
-                                    class="w-10 h-10 mx-auto bg-yellow-50 rounded-full flex items-center justify-center text-yellow-600 mb-2">
-                                    <i class="fas fa-balance-scale"></i>
-                                </div>
-                                <p class="font-medium">2. 评估影响</p>
-                                <p class="text-gray-400 scale-75">成本/进度/质量</p>
-                            </div>
-                            <div class="text-gray-300"><i class="fas fa-arrow-right"></i></div>
-                            <div class="flex-1">
-                                <div
-                                    class="w-10 h-10 mx-auto bg-green-50 rounded-full flex items-center justify-center text-green-600 mb-2">
-                                    <i class="fas fa-check-circle"></i>
-                                </div>
-                                <p class="font-medium">3. 审批执行</p>
-                            </div>
-                        </div>
-                        <div class="mt-4 bg-gray-50 p-3 rounded border border-gray-100 text-xs text-gray-600">
-                            <strong>最新变更：</strong> [2024-04-01] 增加“微信一键登录”功能。评估结果：工期增加 2天，已批准。
-                        </div>
-                    </div>
+                <div id="app-quality-metrics-container" class="space-y-8">
+                    <!-- Dynamic Content -->
                 </div>
             </div>
 
@@ -1443,6 +1118,45 @@
         </div>
     </div>
 
+    <!-- Metric Detail Modal -->
+    <div id="metric-detail-modal"
+        class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center z-50">
+        <div
+            class="bg-white rounded-lg shadow-xl p-6 max-w-3xl w-full transform transition-all scale-100 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-gray-900" id="metric-detail-title">指标详情</h3>
+                <button onclick="closeMetricDetailModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="space-y-6">
+                <div>
+                    <h4 class="flex items-center text-lg font-bold text-green-700 mb-2">
+                        <i class="fab fa-android mr-2 text-xl"></i> Android 实现方案
+                    </h4>
+                    <div id="metric-android-impl"
+                        class="bg-gray-50 p-4 rounded-lg text-sm text-gray-800 whitespace-pre-wrap font-mono border border-gray-200">
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="flex items-center text-lg font-bold text-blue-500 mb-2">
+                        <i class="fas fa-mobile-alt mr-2 text-xl"></i> Flutter 实现方案
+                    </h4>
+                    <div id="metric-flutter-impl"
+                        class="bg-gray-50 p-4 rounded-lg text-sm text-gray-800 whitespace-pre-wrap font-mono border border-gray-200">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-end">
+                <button onclick="closeMetricDetailModal()"
+                    class="px-4 py-2 bg-primary text-white rounded-md text-sm font-medium hover:bg-indigo-700 shadow-sm">关闭</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="js/script.js"></script>
     <!-- Energy Config Modal -->
@@ -1483,6 +1197,44 @@
                         class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm font-medium">取消</button>
                     <button onclick="saveEnergyConfig()"
                         class="px-4 py-2 bg-primary text-white rounded-md hover:bg-indigo-700 text-sm font-medium">保存配置</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Management Modal -->
+    <div id="data-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3 text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100">
+                    <i class="fas fa-database text-blue-600 text-xl"></i>
+                </div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mt-2">数据备份与迁移</h3>
+                <div class="mt-2 px-7 py-3">
+                    <p class="text-sm text-gray-500 mb-4">
+                        由于浏览器安全限制，从文件直接打开和通过服务器访问的数据是隔离的。请使用此功能进行迁移。
+                    </p>
+                    <div class="space-y-3">
+                        <button onclick="exportData()"
+                            class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition">
+                            <i class="fas fa-download mr-2"></i>导出数据 (Export JSON)
+                        </button>
+
+                        <div class="relative">
+                            <input type="file" id="import-file" class="hidden" accept=".json"
+                                onchange="importData(this)">
+                            <button onclick="document.getElementById('import-file').click()"
+                                class="w-full bg-white border border-gray-300 text-gray-700 p-2 rounded hover:bg-gray-50 transition">
+                                <i class="fas fa-upload mr-2"></i>导入数据 (Import JSON)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="items-center px-4 py-3">
+                    <button onclick="closeDataModal()"
+                        class="px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300">
+                        关闭
+                    </button>
                 </div>
             </div>
         </div>
