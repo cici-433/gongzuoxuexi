@@ -18,6 +18,7 @@ tailwind.config = {
 const STORAGE_KEY_LOGS = 'nexus_daily_logs';
 const STORAGE_KEY_DRAFT = 'nexus_daily_draft';
 const STORAGE_KEY_TASKS = 'nexus_tasks'; // New for dashboard tasks
+const STORAGE_KEY_PROMPT_TEMPLATES = 'nexus_prompt_templates';
 
 // Initialize Data
 let dailyLogs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || '[]');
@@ -66,6 +67,10 @@ document.addEventListener('DOMContentLoaded', () => {
     renderTasks();
     updateDashboardStats();
     updateTimerDisplay(); // Init timer display
+
+    initPromptTemplates();
+    renderPromptTemplatesSidebar();
+    attachPromptTemplatesStorageListener();
 });
 
 // Save Draft
@@ -1645,4 +1650,443 @@ function closeMetricDetailModal() {
     const modal = document.getElementById('metric-detail-modal');
     modal.classList.add('hidden');
     modal.classList.remove('flex');
+}
+
+let promptTemplates = [];
+let promptTemplatesStorageListenerAttached = false;
+
+function attachPromptTemplatesStorageListener() {
+    if (promptTemplatesStorageListenerAttached) return;
+    promptTemplatesStorageListenerAttached = true;
+
+    window.addEventListener('storage', (e) => {
+        if (e.key !== STORAGE_KEY_PROMPT_TEMPLATES) return;
+        promptTemplates = readPromptTemplatesFromStorage().templates;
+        renderPromptTemplatesSidebar();
+        renderPromptTemplatesDrawerList();
+    });
+}
+
+function getDefaultPromptTemplates() {
+    const now = new Date().toISOString();
+    return [
+        {
+            id: `pt_${Date.now().toString()}_1`,
+            title: '需求澄清',
+            description: '一句话总结 + 用户价值 + 待补充问题清单',
+            content: '你现在是[角色]，帮我审查这个需求，输出：1) 一句话总结；2) 关键用户价值；3) 需要补充的问题列表。',
+            createdAt: now,
+            updatedAt: now
+        },
+        {
+            id: `pt_${Date.now().toString()}_2`,
+            title: '代码辅助',
+            description: '从可读性、边界处理、性能三个维度给建议',
+            content: '下面是一个[语言]函数的实现，请按「可读性、边界处理、性能」三个维度给出改进建议，并给出改进后的版本。\n\n[在此粘贴代码]',
+            createdAt: now,
+            updatedAt: now
+        },
+        {
+            id: `pt_${Date.now().toString()}_3`,
+            title: '周报生成',
+            description: '按固定结构生成：成果/指标/风险/计划',
+            content: '根据这段原始素材，帮我生成本周周报，结构为：1) 本周重点成果；2) 指标变化；3) 风险与阻碍；4) 下周计划。\n\n[在此粘贴素材]',
+            createdAt: now,
+            updatedAt: now
+        }
+    ];
+}
+
+function readPromptTemplatesFromStorage() {
+    const raw = localStorage.getItem(STORAGE_KEY_PROMPT_TEMPLATES);
+    if (raw === null) {
+        return { exists: false, templates: [] };
+    }
+
+    try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return { exists: true, templates: [] };
+        return { exists: true, templates: sanitizePromptTemplates(parsed) };
+    } catch (e) {
+        return { exists: true, templates: [] };
+    }
+}
+
+function sanitizePromptTemplates(templates) {
+    if (!Array.isArray(templates)) return [];
+    const now = new Date().toISOString();
+
+    return templates
+        .map(t => {
+            const id = typeof t.id === 'string' && t.id.trim() ? t.id.trim() : `pt_${Date.now().toString()}_${Math.random().toString(16).slice(2)}`;
+            const title = typeof t.title === 'string' ? t.title.trim() : '';
+            const description = typeof t.description === 'string' ? t.description.trim() : '';
+            const content = typeof t.content === 'string' ? t.content : '';
+            const createdAt = typeof t.createdAt === 'string' && t.createdAt ? t.createdAt : now;
+            const updatedAt = typeof t.updatedAt === 'string' && t.updatedAt ? t.updatedAt : createdAt;
+            return { id, title, description, content, createdAt, updatedAt };
+        })
+        .filter(t => t.title && t.content);
+}
+
+function initPromptTemplates() {
+    const { exists, templates } = readPromptTemplatesFromStorage();
+    if (!exists) {
+        promptTemplates = getDefaultPromptTemplates();
+        localStorage.setItem(STORAGE_KEY_PROMPT_TEMPLATES, JSON.stringify(promptTemplates));
+        return;
+    }
+
+    promptTemplates = templates;
+    localStorage.setItem(STORAGE_KEY_PROMPT_TEMPLATES, JSON.stringify(promptTemplates));
+}
+
+function sortPromptTemplatesInPlace() {
+    promptTemplates.sort((a, b) => {
+        const at = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const bt = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return bt - at;
+    });
+}
+
+function clearElementChildren(el) {
+    if (!el) return;
+    while (el.firstChild) el.removeChild(el.firstChild);
+}
+
+async function copyTextToClipboard(text) {
+    const value = (text || '').toString();
+    if (!value) return false;
+
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(value);
+            return true;
+        }
+    } catch (e) {
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+        const ok = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        return ok;
+    } catch (e) {
+        document.body.removeChild(textarea);
+        return false;
+    }
+}
+
+function renderPromptTemplatesSidebar() {
+    const list = document.getElementById('prompt-templates-sidebar-list');
+    const empty = document.getElementById('prompt-templates-sidebar-empty');
+    if (!list || !empty) return;
+
+    sortPromptTemplatesInPlace();
+    clearElementChildren(list);
+
+    if (promptTemplates.length === 0) {
+        empty.classList.remove('hidden');
+        return;
+    }
+
+    empty.classList.add('hidden');
+
+    promptTemplates.forEach(tpl => {
+        const item = document.createElement('div');
+        item.className = 'bg-white/70 border border-purple-100 rounded-lg p-2';
+
+        const row = document.createElement('div');
+        row.className = 'flex items-start justify-between gap-2';
+
+        const meta = document.createElement('div');
+        meta.className = 'min-w-0';
+
+        const title = document.createElement('div');
+        title.className = 'text-xs font-bold text-purple-900 truncate';
+        title.textContent = tpl.title;
+
+        const desc = document.createElement('div');
+        desc.className = 'text-[11px] text-purple-900/80 mt-0.5 line-clamp-2';
+        desc.textContent = tpl.description || '（无描述）';
+
+        meta.appendChild(title);
+        meta.appendChild(desc);
+
+        const actions = document.createElement('div');
+        actions.className = 'flex items-center gap-1 shrink-0';
+
+        const btnEdit = document.createElement('button');
+        btnEdit.type = 'button';
+        btnEdit.className = 'px-2 py-1 rounded text-[11px] font-semibold bg-purple-600 text-white hover:bg-purple-700 transition';
+        btnEdit.textContent = '查看/编辑';
+        btnEdit.addEventListener('click', () => {
+            openPromptTemplatesDrawer();
+            openPromptTemplateEditor(tpl.id);
+        });
+
+        const btnCopy = document.createElement('button');
+        btnCopy.type = 'button';
+        btnCopy.className = 'px-2 py-1 rounded text-[11px] font-semibold bg-white border border-purple-200 text-purple-800 hover:bg-purple-50 transition';
+        btnCopy.textContent = '复制';
+        btnCopy.addEventListener('click', async () => {
+            const ok = await copyTextToClipboard(tpl.content);
+            if (ok) showToast('已复制到剪贴板');
+            else alert('复制失败：请检查浏览器权限或使用手动复制');
+        });
+
+        const btnDelete = document.createElement('button');
+        btnDelete.type = 'button';
+        btnDelete.className = 'px-2 py-1 rounded text-[11px] font-semibold bg-white border border-red-200 text-red-600 hover:bg-red-50 transition';
+        btnDelete.textContent = '删除';
+        btnDelete.addEventListener('click', () => deletePromptTemplate(tpl.id));
+
+        actions.appendChild(btnEdit);
+        actions.appendChild(btnCopy);
+        actions.appendChild(btnDelete);
+
+        row.appendChild(meta);
+        row.appendChild(actions);
+
+        item.appendChild(row);
+        list.appendChild(item);
+    });
+}
+
+function openPromptTemplatesDrawer() {
+    const drawer = document.getElementById('prompt-templates-drawer');
+    if (!drawer) return;
+    drawer.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    renderPromptTemplatesDrawerList();
+}
+
+function openPromptTemplatesDrawerForCreate() {
+    openPromptTemplatesDrawer();
+    openPromptTemplateEditor();
+}
+
+function closePromptTemplatesDrawer() {
+    const drawer = document.getElementById('prompt-templates-drawer');
+    if (!drawer) return;
+    drawer.classList.add('hidden');
+    document.body.style.overflow = '';
+    closePromptTemplateEditor();
+}
+
+function renderPromptTemplatesDrawerList() {
+    const list = document.getElementById('prompt-templates-drawer-list');
+    const empty = document.getElementById('prompt-templates-drawer-empty');
+    if (!list || !empty) return;
+
+    sortPromptTemplatesInPlace();
+    clearElementChildren(list);
+
+    if (promptTemplates.length === 0) {
+        empty.classList.remove('hidden');
+        return;
+    }
+    empty.classList.add('hidden');
+
+    promptTemplates.forEach(tpl => {
+        const item = document.createElement('div');
+        item.className = 'bg-white border border-gray-200 rounded-lg p-3';
+
+        const head = document.createElement('div');
+        head.className = 'flex items-start justify-between gap-3';
+
+        const meta = document.createElement('div');
+        meta.className = 'min-w-0';
+
+        const title = document.createElement('div');
+        title.className = 'text-sm font-bold text-gray-900';
+        title.textContent = tpl.title;
+
+        const desc = document.createElement('div');
+        desc.className = 'text-xs text-gray-600 mt-0.5 line-clamp-2';
+        desc.textContent = tpl.description || '（无描述）';
+
+        meta.appendChild(title);
+        meta.appendChild(desc);
+
+        const actions = document.createElement('div');
+        actions.className = 'flex items-center gap-2 shrink-0';
+
+        const btnEdit = document.createElement('button');
+        btnEdit.type = 'button';
+        btnEdit.className = 'px-3 py-1.5 rounded-md text-xs font-semibold bg-primary text-white hover:bg-indigo-700 transition';
+        btnEdit.textContent = '编辑';
+        btnEdit.addEventListener('click', () => openPromptTemplateEditor(tpl.id));
+
+        const btnCopy = document.createElement('button');
+        btnCopy.type = 'button';
+        btnCopy.className = 'px-3 py-1.5 rounded-md text-xs font-semibold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition';
+        btnCopy.textContent = '复制';
+        btnCopy.addEventListener('click', async () => {
+            const ok = await copyTextToClipboard(tpl.content);
+            if (ok) showToast('已复制到剪贴板');
+            else alert('复制失败：请检查浏览器权限或使用手动复制');
+        });
+
+        const btnDelete = document.createElement('button');
+        btnDelete.type = 'button';
+        btnDelete.className = 'px-3 py-1.5 rounded-md text-xs font-semibold bg-white border border-red-200 text-red-600 hover:bg-red-50 transition';
+        btnDelete.textContent = '删除';
+        btnDelete.addEventListener('click', () => deletePromptTemplate(tpl.id));
+
+        actions.appendChild(btnEdit);
+        actions.appendChild(btnCopy);
+        actions.appendChild(btnDelete);
+
+        head.appendChild(meta);
+        head.appendChild(actions);
+        item.appendChild(head);
+        list.appendChild(item);
+    });
+}
+
+function openPromptTemplateEditor(id = null) {
+    const panel = document.getElementById('prompt-template-editor');
+    if (!panel) return;
+
+    panel.classList.remove('hidden');
+
+    const idInput = document.getElementById('prompt-template-id');
+    const titleInput = document.getElementById('prompt-template-title');
+    const descInput = document.getElementById('prompt-template-description');
+    const contentInput = document.getElementById('prompt-template-content');
+
+    if (!idInput || !titleInput || !descInput || !contentInput) return;
+
+    if (id) {
+        const tpl = promptTemplates.find(t => t.id === id);
+        if (!tpl) return;
+        idInput.value = tpl.id;
+        titleInput.value = tpl.title;
+        descInput.value = tpl.description || '';
+        contentInput.value = tpl.content || '';
+    } else {
+        idInput.value = '';
+        titleInput.value = '';
+        descInput.value = '';
+        contentInput.value = '';
+    }
+
+    titleInput.focus();
+}
+
+function closePromptTemplateEditor() {
+    const panel = document.getElementById('prompt-template-editor');
+    if (!panel) return;
+    panel.classList.add('hidden');
+
+    const idInput = document.getElementById('prompt-template-id');
+    const titleInput = document.getElementById('prompt-template-title');
+    const descInput = document.getElementById('prompt-template-description');
+    const contentInput = document.getElementById('prompt-template-content');
+
+    if (idInput) idInput.value = '';
+    if (titleInput) titleInput.value = '';
+    if (descInput) descInput.value = '';
+    if (contentInput) contentInput.value = '';
+}
+
+function validatePromptTemplateFields({ title, description, content }) {
+    const errors = [];
+
+    const cleanTitle = (title || '').trim();
+    const cleanDesc = (description || '').trim();
+    const cleanContent = (content || '');
+
+    if (!cleanTitle) errors.push('请输入名称');
+    if (cleanTitle.length > 50) errors.push('名称不能超过 50 字');
+    if (cleanDesc.length > 120) errors.push('描述不能超过 120 字');
+    if (!cleanContent.trim()) errors.push('请输入内容');
+
+    return { ok: errors.length === 0, errors, cleanTitle, cleanDesc, cleanContent };
+}
+
+function savePromptTemplate() {
+    const idInput = document.getElementById('prompt-template-id');
+    const titleInput = document.getElementById('prompt-template-title');
+    const descInput = document.getElementById('prompt-template-description');
+    const contentInput = document.getElementById('prompt-template-content');
+
+    if (!idInput || !titleInput || !descInput || !contentInput) return;
+
+    const { ok, errors, cleanTitle, cleanDesc, cleanContent } = validatePromptTemplateFields({
+        title: titleInput.value,
+        description: descInput.value,
+        content: contentInput.value
+    });
+
+    if (!ok) {
+        alert(errors.join('\n'));
+        return;
+    }
+
+    const now = new Date().toISOString();
+    const id = (idInput.value || '').trim();
+
+    if (id) {
+        const index = promptTemplates.findIndex(t => t.id === id);
+        if (index !== -1) {
+            promptTemplates[index] = {
+                ...promptTemplates[index],
+                title: cleanTitle,
+                description: cleanDesc,
+                content: cleanContent,
+                updatedAt: now
+            };
+        }
+    } else {
+        const newId = `pt_${Date.now().toString()}_${Math.random().toString(16).slice(2)}`;
+        const tpl = {
+            id: newId,
+            title: cleanTitle,
+            description: cleanDesc,
+            content: cleanContent,
+            createdAt: now,
+            updatedAt: now
+        };
+        promptTemplates.push(tpl);
+        idInput.value = newId;
+    }
+
+    localStorage.setItem(STORAGE_KEY_PROMPT_TEMPLATES, JSON.stringify(promptTemplates));
+    renderPromptTemplatesSidebar();
+    renderPromptTemplatesDrawerList();
+    showToast('模板已保存');
+}
+
+function deletePromptTemplate(id) {
+    const tpl = promptTemplates.find(t => t.id === id);
+    if (!tpl) return;
+    if (!confirm(`确定要删除模板「${tpl.title}」吗？`)) return;
+
+    promptTemplates = promptTemplates.filter(t => t.id !== id);
+    localStorage.setItem(STORAGE_KEY_PROMPT_TEMPLATES, JSON.stringify(promptTemplates));
+
+    const editingId = (document.getElementById('prompt-template-id') || {}).value;
+    if (editingId === id) closePromptTemplateEditor();
+
+    renderPromptTemplatesSidebar();
+    renderPromptTemplatesDrawerList();
+    showToast('模板已删除');
+}
+
+async function copyEditingPromptTemplateContent() {
+    const contentInput = document.getElementById('prompt-template-content');
+    if (!contentInput) return;
+    const ok = await copyTextToClipboard(contentInput.value);
+    if (ok) showToast('已复制到剪贴板');
+    else alert('复制失败：请检查浏览器权限或使用手动复制');
 }
