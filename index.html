@@ -72,6 +72,14 @@
                         <span class="ml-3">流程与复盘 (Review)</span>
                     </a>
                 </li>
+                <li>
+                    <a href="#" onclick="showSection('ai-boost')"
+                        class="nav-link flex items-center p-2 rounded-lg hover:bg-gray-700 group transition-colors"
+                        data-target="ai-boost">
+                        <i class="fas fa-robot w-6 text-center text-purple-400 group-hover:text-white"></i>
+                        <span class="ml-3">AI提效指南 (AI Boost)</span>
+                    </a>
+                </li>
 
                 <!-- 项目维度 -->
                 <li class="px-3 py-2 mt-4 text-gray-400 text-xs font-bold uppercase tracking-wider">项目交付 (Project)</li>
@@ -624,6 +632,196 @@
                     <div class="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
                         <div class="text-gray-400 mb-4"><i class="fas fa-clipboard-check text-4xl opacity-20"></i></div>
                         <p class="text-gray-500">暂无复盘记录，点击右上角开始你的第一次复盘吧！</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Productivity Section -->
+            <div id="ai-boost-section" class="hidden-section">
+                <div class="mb-6 flex justify-between items-end">
+                    <div>
+                        <h2 class="text-3xl font-bold text-gray-900">AI 提效指南 (AI Productivity)</h2>
+                        <p class="text-gray-500 mt-1">把 AI 当成「超级实习生 + 双手外包」，系统性嵌入你的工作流。</p>
+                    </div>
+                    <div class="text-right space-y-2">
+                        <span
+                            class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
+                            <i class="fas fa-bolt mr-1"></i> 建议每天至少有 1 小时是「和 AI 一起工作」
+                        </span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    <div class="xl:col-span-2 space-y-6">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4">
+                                <i class="fas fa-sitemap text-indigo-500 mr-2"></i> 1. 让 AI 管理你的「输入」
+                            </h3>
+                            <div class="grid md:grid-cols-2 gap-4 text-sm text-gray-700">
+                                <div class="space-y-3">
+                                    <h4 class="font-semibold text-gray-800 text-sm">需求 / 邮件 / 文档总结</h4>
+                                    <ul class="list-disc list-inside space-y-1 text-xs text-gray-600">
+                                        <li>让 AI 用「五句以内」总结需求要点。</li>
+                                        <li>要求输出「问题列表 + 风险点 + 待澄清点」。</li>
+                                        <li>长文档一律先丢给 AI 做 1 分钟简报。</li>
+                                    </ul>
+                                </div>
+                                <div class="space-y-3">
+                                    <h4 class="font-semibold text-gray-800 text-sm">会议记录与行动项提取</h4>
+                                    <ul class="list-disc list-inside space-y-1 text-xs text-gray-600">
+                                        <li>会后把纪要原文丢给 AI，生成「行动项 + Owner + 截止时间」。</li>
+                                        <li>要求 AI 区分：决策 / 争议点 / 后续跟进。</li>
+                                        <li>可以直接把行动项同步到「任务矩阵」中。</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4">
+                                <i class="fas fa-code text-green-500 mr-2"></i> 2. 让 AI 加速「产出」
+                            </h3>
+                            <div class="grid md:grid-cols-2 gap-4 text-sm text-gray-700">
+                                <div class="space-y-3">
+                                    <h4 class="font-semibold text-gray-800 text-sm">对开发者</h4>
+                                    <ul class="list-disc list-inside space-y-1 text-xs text-gray-600">
+                                        <li>让 AI 写「伪代码 + 边界条件」，你再落地成真实代码。</li>
+                                        <li>把历史 Bug / Crash Log 丢给 AI，生成排查思路。</li>
+                                        <li>请 AI 帮你写单元测试、Mock 数据、脚本工具。</li>
+                                    </ul>
+                                </div>
+                                <div class="space-y-3">
+                                    <h4 class="font-semibold text-gray-800 text-sm">对产品 / 管理者</h4>
+                                    <ul class="list-disc list-inside space-y-1 text-xs text-gray-600">
+                                        <li>让 AI 把脑图/要点稿，转换成正式 PRD 或汇报 PPT 大纲。</li>
+                                        <li>给 AI 你的「目标 + 现状」，生成 OKR / 行动拆解草稿。</li>
+                                        <li>把周报原始素材丢给 AI，生成结构化周报和亮点提炼。</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4">
+                                <i class="fas fa-brain text-yellow-500 mr-2"></i> 3. 让 AI 参与「思考与复盘」
+                            </h3>
+                            <div class="grid md:grid-cols-2 gap-4 text-sm text-gray-700">
+                                <div class="space-y-3">
+                                    <h4 class="font-semibold text-gray-800 text-sm">决策前</h4>
+                                    <ul class="list-disc list-inside space-y-1 text-xs text-gray-600">
+                                        <li>让 AI 从不同角色视角，帮你列出各方关注点。</li>
+                                        <li>要求 AI 生成「方案对比表：收益 / 成本 / 风险」。</li>
+                                        <li>用 AI 做「反对者视角」审查，补充可能遗漏的风险。</li>
+                                    </ul>
+                                </div>
+                                <div class="space-y-3">
+                                    <h4 class="font-semibold text-gray-800 text-sm">复盘后</h4>
+                                    <ul class="list-disc list-inside space-y-1 text-xs text-gray-600">
+                                        <li>把复盘记录交给 AI，总结「可复制的方法论」和「反模式」。</li>
+                                        <li>要求 AI 输出「下次可以如何更快 / 更稳」。</li>
+                                        <li>把关键经验沉淀成可以复用的 Prompt 模板。</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4">
+                                <i class="fas fa-route text-purple-500 mr-2"></i> AI 驱动开发流程（从 PRD 到任务）
+                            </h3>
+                            <div class="grid md:grid-cols-2 gap-4 text-sm text-gray-700">
+                                <div class="space-y-3">
+                                    <h4 class="font-semibold text-gray-800 text-sm">推荐主流程</h4>
+                                    <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
+                                        <li>生成/完善 PRD：目标、范围/非范围、约束、验收标准（AC）。</li>
+                                        <li>澄清关口：待澄清问题清单 + 假设 + 风险点（先对齐再开干）。</li>
+                                        <li>任务计划：按模块拆任务，补齐完成定义、依赖、优先级、测试点。</li>
+                                        <li>小步执行：每个任务保持可运行/可回滚，及时回归与合并。</li>
+                                        <li>复盘沉淀：把有效 Prompt、Checklist、踩坑写成模板复用。</li>
+                                    </ol>
+                                </div>
+                                <div class="space-y-3">
+                                    <h4 class="font-semibold text-gray-800 text-sm">你来做什么，AI 来做什么</h4>
+                                    <ul class="list-disc list-inside space-y-1 text-xs text-gray-600">
+                                        <li><span class="font-semibold">你：</span>定目标、定边界、定验收、做取舍、背书上线。</li>
+                                        <li><span class="font-semibold">AI：</span>写草稿 PRD、拆任务、生成代码候选、补测试、读日志排障。</li>
+                                        <li><span class="font-semibold">共同：</span>以验收标准和测试为约束，迭代到可交付。</li>
+                                    </ul>
+                                    <div class="mt-2 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                        <p class="text-[11px] text-gray-700 font-semibold mb-1">关键提醒：</p>
+                                        <p class="text-[11px] text-gray-600">不要从 PRD 直接“一步到位”生成任务，先过一遍澄清关口，能显著减少返工。</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                            <h3 class="text-base font-bold text-gray-800 mb-2 flex items-center">
+                                <i class="fas fa-book-open text-indigo-500 mr-2"></i> VibeCoding 编程系列教材
+                            </h3>
+                            <p class="text-xs text-gray-600 mb-3">
+                                基于 VibeCoding 入门指南的系统教材，从零开始练习「用自然语言驱动代码」，配套章节示例与 Prompt 练习。
+                            </p>
+                            <div class="bg-gray-50 border border-dashed border-gray-200 rounded-lg p-3 mb-3">
+                                <p class="text-[11px] text-gray-700 mb-1 font-semibold">学习路径建议：</p>
+                                <ol class="list-decimal list-inside space-y-1 text-[11px] text-gray-600">
+                                    <li>从 README 开始，了解整体目标与使用方式。</li>
+                                    <li>按 <span class="font-mono text-[11px]">chapters/</span> 目录逐章动手练习。</li>
+                                    <li>结合 <span class="font-mono text-[11px]">prompts/</span> 中示例，建立自己的 Prompt 收藏夹。
+                                    </li>
+                                </ol>
+                            </div>
+                            <a href="https://github.com/jacksmion/vibe-coding-tutorial" target="_blank"
+                                class="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition">
+                                <i class="fab fa-github mr-1.5"></i>
+                                打开 GitHub 教程仓库
+                            </a>
+                        </div>
+
+                        <div class="bg-purple-50 rounded-xl border border-purple-100 p-5">
+                            <h3 class="text-base font-bold text-purple-800 mb-2 flex items-center">
+                                <i class="fas fa-magic mr-2"></i> 高效 Prompt 模板
+                            </h3>
+                            <p class="text-xs text-purple-900 mb-3">把下面这些结构直接复制，替换掉方括号内容即可：</p>
+                            <ul class="space-y-2 text-xs text-purple-900 font-mono">
+                                <li>
+                                    <span class="font-semibold">需求澄清：</span><br>
+                                    「你现在是[角色]，帮我审查这个需求，输出：1) 一句话总结；2) 关键用户价值；3) 需要补充的问题列表。」
+                                </li>
+                                <li>
+                                    <span class="font-semibold">代码辅助：</span><br>
+                                    「下面是一个[语言]函数的实现，请按『可读性、边界处理、性能』三个维度给出改进建议，并给出改进后的版本。」
+                                </li>
+                                <li>
+                                    <span class="font-semibold">周报生成：</span><br>
+                                    「根据这段原始素材，帮我生成本周周报，结构为：1) 本周重点成果；2) 指标变化；3) 风险与阻碍；4) 下周计划。」
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                            <h3 class="text-base font-bold text-gray-800 mb-2 flex items-center">
+                                <i class="fas fa-shield-alt text-red-500 mr-2"></i> 使用 AI 的三条安全原则
+                            </h3>
+                            <ul class="list-disc list-inside space-y-1 text-xs text-gray-600">
+                                <li>涉及公司机密、用户隐私的数据，先确认是否允许在外部模型中使用。</li>
+                                <li>AI 的输出一律视为「草稿」，关键决策必须由你自己背书。</li>
+                                <li>让 AI 解释「为什么这样做」，而不是只要结论，避免黑盒依赖。</li>
+                            </ul>
+                        </div>
+
+                        <div class="bg-green-50 rounded-xl border border-green-100 p-5">
+                            <h3 class="text-base font-bold text-green-800 mb-2 flex items-center">
+                                <i class="fas fa-check-circle mr-2"></i> 本周可以尝试的 3 个小实验
+                            </h3>
+                            <ol class="list-decimal list-inside space-y-1 text-xs text-gray-700">
+                                <li>所有会议，只要时长超过 30 分钟，强制用 AI 生成行动项。</li>
+                                <li>写代码前，先让 AI 输出「伪代码 + 边界条件」，再动手。</li>
+                                <li>每周复盘时，让 AI 帮你写一段「下周我要成为怎样的自己」。</li>
+                            </ol>
+                        </div>
                     </div>
                 </div>
             </div>

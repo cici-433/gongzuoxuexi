@@ -135,7 +135,7 @@ function renderDailyLogs() {
 function showSection(sectionId) {
     // 隐藏所有 section
     const sections = [
-        'dashboard', 'reports', 'smart', 'time-energy', 'review',
+        'dashboard', 'reports', 'smart', 'time-energy', 'review', 'ai-boost',
         'project-quality',
         'team-okr', 'team-raci', 'team-sync', 'team-growth'
     ];
@@ -932,8 +932,8 @@ function renderEnergyChart() {
     }
 
     // Update Text in UI
-    const peakText = document.querySelector('.bg-green-50 h4');
-    const dipText = document.querySelector('.bg-yellow-50 h4');
+    const peakText = document.getElementById('energy-peak-text');
+    const dipText = document.getElementById('energy-dip-text');
     if (peakText) peakText.textContent = `黄金时间 (${energyConfig.peakStart} - ${energyConfig.peakEnd})`;
     if (dipText) dipText.textContent = `行政时间 (${energyConfig.dipStart} - ${energyConfig.dipEnd})`;
 

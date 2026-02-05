@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>数据救援站 (Data Rescue)</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; line-height: 1.6; max-width: 800px; margin: 0 auto; }
+        .card { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 8px; background: #f9fafb; }
+        .btn { background: #4F46E5; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        .btn:hover { background: #4338ca; }
+        .btn-green { background: #10B981; }
+        .btn-green:hover { background: #059669; }
+        code { background: #e5e7eb; padding: 2px 5px; border-radius: 4px; font-family: monospace; }
+        h1 { color: #111827; }
+        li { margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🚑 数据救援站</h1>
+    <p>如果您在主页看不到数据，请用此页面查找数据残留。</p>
+    <p>当前页面地址: <code id="url"></code></p>
+    
+    <div class="card">
+        <h3>🔍 1. 扫描结果</h3>
+        <p>在当前环境下找到以下数据：</p>
+        <ul id="data-list"></ul>
+        <p id="no-data" style="color: red; display: none; font-weight: bold;">⚠️ 未找到任何 'nexus_' 开头的数据！</p>
+    </div>
+
+    <div class="card" id="actions" style="display: none;">
+        <h3>💾 2. 抢救数据</h3>
+        <p>太好了！数据还在。请点击下面的按钮将其永久保存到项目文件中：</p>
+        <button class="btn" onclick="saveToDisk()">保存到项目文件 (推荐)</button>
+        <button class="btn btn-green" onclick="downloadJSON()" style="margin-left: 10px;">下载 JSON 备份</button>
+        <p style="margin-top: 10px; font-size: 0.9em; color: #666;">点击“保存”成功后，您就可以回到主页刷新查看了。</p>
+    </div>
+
+    <script>
+        document.getElementById('url').textContent = window.location.href;
+        
+        const data = {};
+        let found = false;
+        const list = document.getElementById('data-list');
+        
+        for(let i=0; i<localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if(key.startsWith('nexus_')) {
+                const val = localStorage.getItem(key);
+                data[key] = val;
+                found = true;
+                
+                const li = document.createElement('li');
+                li.textContent = key + ` (${(val.length/1024).toFixed(2)} KB)`;
+                list.appendChild(li);
+            }
+        }
+
+        if(found) {
+            document.getElementById('actions').style.display = 'block';
+        } else {
+            document.getElementById('no-data').style.display = 'block';
+        }
+
+        async function saveToDisk() {
+            try {
+                // 如果是 file:// 协议，fetch 可能不工作，提示用户下载
+                if (window.location.protocol === 'file:') {
+                    alert('注意：您当前是直接打开的文件，无法自动同步到服务器。\n请使用右边的【下载 JSON 备份】按钮，然后去 localhost 页面导入。');
+                    return;
+                }
+
+                const res = await fetch('/api/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (res.ok) {
+                    alert('✅ 成功！数据已保存到 nexus_data.json。\n\n现在您可以关闭此页面，回到 http://localhost:8001/ 刷新查看数据了。');
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch(e) {
+                alert('保存失败 (可能是服务器未启动): ' + e.message + '\n\n建议使用【下载 JSON 备份】按钮。');
+            }
+        }
+
+        function downloadJSON() {
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            a.download = `nexus_rescue_${date}.json`;
+            a.click();
+        }
+    </script>
+</body>
+</html>

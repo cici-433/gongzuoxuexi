@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>全盘扫描 (Deep Scan)</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .item { border-bottom: 1px solid #eee; padding: 10px 0; }
+        .key { font-weight: bold; color: #4F46E5; }
+        .val { color: #555; font-family: monospace; display: block; white-space: pre-wrap; max-height: 100px; overflow: hidden; }
+        .empty { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>🔍 全盘数据扫描</h1>
+    <p>当前地址: <script>document.write(window.location.href)</script></p>
+    
+    <div id="result"></div>
+
+    <script>
+        const container = document.getElementById('result');
+        if (localStorage.length === 0) {
+            container.innerHTML = '<p class="empty">⚠️ LocalStorage 是空的 (0 items)</p>';
+        } else {
+            let html = `<p>发现 ${localStorage.length} 条数据:</p>`;
+            for(let i=0; i<localStorage.length; i++) {
+                const key = localStorage.key(i);
+                const val = localStorage.getItem(key);
+                html += `
+                    <div class="item">
+                        <span class="key">${key}</span>
+                        <span class="val">${val.substring(0, 200)}${val.length > 200 ? '...' : ''}</span>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
