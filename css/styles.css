@@ -35,3 +35,24 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
+
+.markdown-body {
+    font-size: 15px;
+    line-height: 1.85;
+}
+
+.markdown-body pre {
+    border-radius: 12px;
+    padding: 16px;
+    overflow: auto;
+}
+
+.markdown-body code {
+    font-size: 0.95em;
+}
+
+.markdown-body table {
+    display: block;
+    width: 100%;
+    overflow: auto;
+}
