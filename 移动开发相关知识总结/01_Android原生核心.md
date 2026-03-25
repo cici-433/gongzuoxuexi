@@ -1049,6 +1049,35 @@ class UsersFragment : Fragment(R.layout.fragment_users) {
 
 **原理：** ViewModel 存储在 `ViewModelStore` 中，`ViewModelStore` 在 Activity 重建时通过 `NonConfigurationInstances` 保存传递，不随 Activity 销毁。
 
+**为什么 ViewModel“看起来不随 Activity 销毁”（只针对配置变更）**
+- **关键点**：配置变更（旋转、语言、字体缩放、暗色模式等）会触发 Activity 重建，但系统会把“上一任 Activity 的非配置实例”暂存并交给“下一任 Activity”。
+- **保存的是 ViewModelStore，不是 Activity**：`ViewModel` 实例挂在 `ViewModelStore` 里；配置变更时旧 Activity 会把 `ViewModelStore` 放进 `NonConfigurationInstances`，新 Activity 再取出来复用，所以 ViewModel 不会被清空。
+- **销毁时机由 isChangingConfigurations 决定**：
+  - `isChangingConfigurations == true`：旧 Activity `onDestroy()` 发生，但不会清空 `ViewModelStore`（交给新 Activity）
+  - `isChangingConfigurations == false`（finish/back、系统真正回收）：清空 `ViewModelStore`，触发 `ViewModel.onCleared()`
+
+**简化流程图（配置变更 vs 真销毁）**
+```
+旋转屏幕：
+Activity(old).onDestroy(isChangingConfigurations=true)
+  → retainNonConfigurationInstances(ViewModelStore)
+Activity(new).onCreate()
+  → getLastNonConfigurationInstances() 取回同一个 ViewModelStore
+
+返回退出/finish：
+Activity.onDestroy(isChangingConfigurations=false)
+  → ViewModelStore.clear() → ViewModel.onCleared()
+```
+
+**为什么 onSaveInstanceState 能“跨重建/跨进程”**
+- **存的是 Bundle（序列化）**：系统在合适的时机调用 `onSaveInstanceState(outState)`，把少量 UI 恢复数据写进 `Bundle`。
+- **系统代管与回传**：该 `Bundle` 会由系统（ActivityManager/ActivityThread）托管，在 Activity 重建时回传给 `onCreate(savedInstanceState)` / `onRestoreInstanceState()`；进程被杀后重启，也能把这份序列化状态带回来（前提是没被系统丢弃且大小不过限）。
+- **代价与限制**：需要序列化、大小严格受限（通常建议 < 50KB），不适合放大对象/列表/图片等。
+
+**实战建议**
+- 大量 UI 数据、列表结果、分页状态：放 ViewModel（配置变更保留，不保进程被杀）
+- 进程被杀后必须恢复的少量状态（选中项、滚动位置、筛选条件）：放 `onSaveInstanceState` 或 `SavedStateHandle`
+
 **Q：ViewModel 和 onSaveInstanceState 的区别？**
 
 | <br /> | ViewModel | onSaveInstanceState |
@@ -1124,6 +1153,77 @@ app（壳工程）
 > 3. 页面路由用 Navigation Component 统一管理，通过 Deep Link 跨模块跳转
 > 4. 保证每个 feature 模块可以独立运行（单模块 App 调试）
 
+**组件化如何落地（可直接照这个做）**
+
+**1）模块职责与依赖边界（先定规矩）**
+- `app`：壳工程，只做装配（DI 绑定、NavGraph 汇总、全局初始化、打包配置）
+- `feature_xxx`：页面与业务流程（UI + VM + UseCase），不得依赖其他 feature
+- `core_xxx`：基础设施与通用能力（网络、数据库、图片、日志、通用 UI、通用工具）
+- `core_api`（推荐单独拆出）：对外只暴露接口与模型，避免“接口下沉到某个 core 导致依赖串起来”
+
+**2）跨模块能力提供：用“接口 + DI”替代直接依赖**
+- 典型场景：`feature_order` 需要“登录状态/用户信息”，但不能依赖 `feature_user`
+- 做法：在 `core_api` 定义能力接口；实现放在对应 feature；由 `app` 绑定实现（实现对业务可见，接口对全局可见）
+
+```kotlin
+interface AccountService {
+    fun isLoggedIn(): Boolean
+    fun userIdOrNull(): String?
+}
+```
+
+```kotlin
+class DefaultAccountService : AccountService {
+    override fun isLoggedIn(): Boolean = true
+    override fun userIdOrNull(): String? = "u1"
+}
+```
+
+```kotlin
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class AccountModule {
+    @Binds
+    abstract fun bindAccountService(impl: DefaultAccountService): AccountService
+}
+```
+
+**3）跨模块页面跳转：统一路由口径（Deep Link 优先）**
+- 核心原则：feature 之间不直接拿对方的 Activity/Fragment class
+- 推荐方案：Navigation Component + Deep Link
+  - 每个 feature 自己维护一个 `nav_graph_xxx.xml`
+  - `app` 负责汇总（include）并统一定义 Deep Link scheme/host/path
+  - feature 内只拼装 URI 参数并导航
+
+```kotlin
+val uri = Uri.parse("app://user/detail?userId=123")
+findNavController().navigate(uri)
+```
+
+**4）跨模块事件：能不用就不用，必须用就“收敛口径”**
+- 不推荐：全局 EventBus 任意发任意收（难追踪、难测试）
+- 推荐：按领域定义“事件通道”，仅在 `app/core` 提供一个事件出口，事件类型收敛为 sealed class
+
+```kotlin
+sealed interface AppEvent {
+    data object LoggedOut : AppEvent
+}
+```
+
+**5）单模块独立运行（提升开发体验）**
+- 每个 `feature_xxx` 提供一个最小可运行入口（debug 专用），用于独立调试
+- 常见做法：通过 build variant 或 Gradle property 切换 `com.android.library`/`com.android.application`
+
+**6）资源与命名空间（避免资源冲突）**
+- 为每个模块设置独立 `namespace`
+- 资源命名加模块前缀（如 `user_`、`order_`），减少 `R` 冲突与合并成本
+- 通用资源下沉到 `core_ui`，不要在多个 feature 复制同一套资源
+
+**7）依赖治理（防止越拆越乱）**
+- 禁止 feature 间直接依赖；只允许依赖 core 与 core_api
+- 新增三方库需评审：体积、方法数、初始化成本、与现有库重复度
+- 业务通用能力上移到 core；页面私有逻辑留在 feature，避免“通用层业务化”
+
 ***
 
 ## 六、插件化 / 热修复（了解原理）
@@ -1135,6 +1235,31 @@ app（壳工程）
 | 类替换       | 修改 ClassLoader dexElements 顺序 | Tinker |
 | 方法 Hook   | ART 替换 ArtMethod 指针           | AndFix |
 | Sophix 混合 | 两者结合 + 资源修复                   | Sophix |
+
+**原理细节（理解“为什么能修、有什么边界”）**
+
+**1）类替换（Tinker 思路）：为什么改 dexElements 顺序就能生效**
+- **ClassLoader 查找规则**：App 默认是 `PathClassLoader`（其父类 `BaseDexClassLoader`）加载类。它内部维护 `DexPathList`，其中 `dexElements[]` 代表一组 dex/apk/jar 的查找路径。
+- **查找顺序**：当需要加载 `com.xxx.Foo` 时，会按 `dexElements[]` 从前到后扫描，找到第一个包含该类定义的 dex 即返回。
+- **补丁生效点**：把补丁 dex 插到 `dexElements[0]` 之前，相同类名会优先命中补丁 dex，从而实现“类实现替换”。
+- **为什么通常需要重启进程**：类一旦被 ClassLoader 加载进内存，就不会再重新加载同名类；要让“新 dex 优先命中”对目标类生效，必须在该类首次加载前完成插入，工程上通常是下发补丁后“下次启动”生效或主动重启进程。
+- **资源修复的核心点**：资源走 `Resources/AssetManager`，不是走 ClassLoader；常见做法是把补丁资源包路径追加到 AssetManager 的 asset path 列表（使其查找顺序优先），或替换整套 resources.arsc，再触发资源重建/重启使其全量生效。
+- **能力边界**：适合修 Java/Kotlin 代码逻辑、部分资源；但对“已加载类”“进程常驻”“初始化早期就用到的类”更敏感，需要尽早安装补丁并控制生效窗口。
+
+**2）方法 Hook（AndFix 思路）：为什么能“即时生效”，但改动受限**
+- **ART 方法调用本质**：Android 5.0+ 使用 ART，方法在运行时由 `ArtMethod`（概念实体）描述，其内部包含解释执行/编译代码入口等信息。
+- **补丁生效点**：把“原方法”的调用入口指向“补丁方法”的入口（或替换相关指针/跳板），让后续调用直接执行新实现，因此可以做到不重启或少量重启。
+- **为什么变更受限**：Hook 通常只能替换“已有方法体”，不适合增删字段、改方法签名、改类结构；并且 JIT/AOT 内联优化、不同 Android 版本 ART 结构差异都会影响稳定性与兼容性。
+- **工程代价**：需要适配多版本系统与厂商 ROM，风险高；更多用于紧急线上修复，长期还是建议走版本发布或类替换式补丁体系。
+
+**3）Sophix 混合：为什么会同时用两套机制**
+- **小改动走 Hook**：短链路、即时生效、适合线上快速止血（例如一个 NPE/边界判断）。
+- **大改动走类替换 + 重启**：结构性变更或涉及大量类时，用 dexElements 优先级方式更稳，但需要重启/下次启动。
+- **资源修复配套**：补丁体系通常还要支持资源（以及部分情况下的 so）替换，并提供回滚与灰度策略保证稳定性。
+
+**插件化 vs 热修复（顺带厘清）**
+- **插件化**：目标是“按需加载一整套业务/页面”，核心是动态加载 dex/资源/组件（常见：DexClassLoader + AssetManager addAssetPath + 组件代理/占坑/Hook）。
+- **热修复**：目标是“替换已有逻辑缺陷”，核心是让同名类或同名方法在运行时优先命中补丁实现（类优先级或方法入口替换）。
 
 **Q：热修复在架构上需要注意什么？**
 
@@ -1168,6 +1293,69 @@ app（壳工程）
   - 缺点：防护强度有限，属于“提高逆向成本”而非强对抗
   - 适用：不涉及强对抗、安全主要靠后端校验的 App
 
+**“仅混淆 + 安全编码”具体实现（可按步骤落地）**
+
+**1）开启 R8 与资源压缩（App 模块 release）**
+```gradle
+android {
+  buildTypes {
+    release {
+      minifyEnabled true
+      shrinkResources true
+      proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"),
+        "proguard-rules.pro"
+    }
+  }
+}
+```
+
+**2）ProGuard/R8 规则管理（如何写才不翻车）**
+- 规则原则：只 keep“运行时确实需要反射/注解解析”的部分；其余尽量让 R8 正常裁剪与重命名
+- 常见触发点：反射（Class.forName/newInstance）、JSON 序列化/反序列化、动态路由、JNI 反射、WebView JSBridge
+- 组织方式：按模块拆分规则文件（例如每个 feature 提供自己的规则），最终在 app 统一聚合
+
+```proguard
+-keepattributes *Annotation*
+-keep class **.R$* { *; }
+```
+
+**3）发布 mapping 与崩溃还原（必须做，否则混淆无意义）**
+- 产物位置：`app/build/outputs/mapping/release/mapping.txt`
+- 要求：每个 release 版本保存 mapping；线上崩溃平台（Crashlytics/Play Console 等）上传 mapping 才能还原堆栈
+
+**4）NDK 符号处理：strip + 符号留存（推荐“线上可还原，包内不带符号”）**
+- 目标：APK/AAB 内的 `.so` 尽量无符号（减体积、增逆向成本），但保留“外部符号文件”用于线上 native crash 还原
+- AGP 配置（release 生成符号表用于上传）
+```gradle
+android {
+  buildTypes {
+    release {
+      ndk {
+        debugSymbolLevel "SYMBOL_TABLE"
+      }
+    }
+  }
+}
+```
+
+**5）C/C++ 编译裁剪（CMake 示例）**
+```cmake
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2 -fvisibility=hidden -ffunction-sections -fdata-sections")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -fvisibility=hidden -ffunction-sections -fdata-sections")
+set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -Wl,--gc-sections -Wl,--strip-all")
+```
+
+**6）ABI 策略（体积与兼容的取舍）**
+- AAB：默认按设备拆分 ABI；重点是确保 `arm64-v8a` 覆盖完整
+- APK：如需要控制体积，可只发 `arm64-v8a` 或按渠道拆分（需评估 `armeabi-v7a` 覆盖与业务影响）
+
+**7）“安全编码”落地清单（不靠壳也能提升安全）**
+- 关键参数校验：所有敏感操作必须服务端二次校验（价格、会员、权限、风控）
+- 证书/域名校验：TLS Pinning（谨慎灰度与回滚），防止中间人篡改
+- 敏感信息：避免明文存储；密钥不硬编码，优先 Keystore/服务端下发与轮换
+- 反射与动态加载：尽量减少；无法避免时，明确 keep 规则与版本兼容策略
+- 日志与调试：release 关闭调试入口与敏感日志输出，避免信息泄露
+
 **注意事项与风险（上线必须考虑）**
 
 - **签名与安装**：确保加固后仍使用 V2/V3 签名方案；渠道多签需统一流程；AAB/Split APK 的动态加载与签名校验要兼容。
@@ -1182,4 +1370,3 @@ app（壳工程）
 - 先做基础安全：R8 混淆 + shrinkResources、NDK `strip`/符号混淆、敏感字符串加密、证书/域名 Pinning、服务端校验与风控。
 - 若需壳：仅保护“核心模块 DEX”，采用**内存解密**，在 `attachBaseContext` 早期加载，避免明文写盘；保留**安全模式**与**降级**开关。
 - 全程接入 APM：首启动耗时（TTFD/TTI/TTCD）与崩溃/ANR分桶监控；变更前后对比 P90/P95 与长尾，问题即刻回滚。
-
