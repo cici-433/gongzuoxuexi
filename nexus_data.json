@@ -11,14 +11,28 @@
       "plan": "- [ ] 1、出需求，有几个页面，每个页面有什么元素和功能\n- [ ] 2、出线稿\n- [ ] 3、出可编辑的UI稿\n- [ ] 4、开发小游戏\n- [ ] 5、上架小游戏",
       "priority": "P2",
       "dueDate": "2026-04-26",
-      "status": "todo",
+      "status": "doing",
       "progress": 0,
       "tags": [
         "小游戏"
       ],
       "checklist": [],
       "createdAt": "2026-03-26T02:41:22.899Z",
-      "updatedAt": "2026-03-26T03:10:09.877Z"
+      "updatedAt": "2026-03-26T07:16:51.397Z"
+    },
+    {
+      "id": "1774509614111",
+      "title": "面试复习",
+      "plan": "- [] Android原生核心\n- [] Flutter核型\n- [] 混合开发与架构\n- [] 架构师专项\n- [] 团队管理",
+      "priority": "P1",
+      "dueDate": "2026-04-03",
+      "status": "doing",
+      "progress": 0,
+      "tags": [
+        "面试"
+      ],
+      "createdAt": "2026-03-26T07:20:14.111Z",
+      "updatedAt": "2026-03-26T07:20:36.699Z"
     }
   ]
 }
