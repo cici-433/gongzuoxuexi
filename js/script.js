@@ -14,6 +14,11 @@ let interviewIndex = 0;
 let interviewShowAnswer = false;
 let interviewKnown = new Set();
 let interviewDocName = '';
+let tasks = [];
+let taskFilterStatus = 'all';
+let taskFilterPriority = 'all';
+let taskSortMode = 'updated_desc';
+// 子任务功能已移除，统一通过计划中的多级清单进行管理
 
 function escapeHtml(value) {
     return String(value)
@@ -201,6 +206,152 @@ function renderMarkdown(markdown) {
     return markdownToHtml(markdown);
 }
 
+function normalizePlanMarkdown(markdown) {
+    const lines = String(markdown || '').replaceAll('\r\n', '\n').split('\n');
+    const stdChecklistRe = /^(\s*)(?:[-*]|\d+\.)\s+\[( |x|X)\]\s+(.*)$/;
+    const bracketTokenRe = /\[\s*(?:x|X)?\s*\]/;
+    const tokenRe = /\[\s*([xX]?)\s*\]/g;
+    const out = [];
+
+    for (const rawLine of lines) {
+        const line = String(rawLine || '').replace(/\t/g, '    ');
+
+        const m = line.match(stdChecklistRe);
+        if (m) {
+            const indent = m[1] || '';
+            const checked = /[xX]/.test(m[2] || '');
+            const text = String(m[3] || '').trim();
+            out.push(`${indent}- [${checked ? 'x' : ' '}] ${text}`);
+            continue;
+        }
+
+        if (bracketTokenRe.test(line)) {
+            const indent = (line.match(/^(\s*)/) || [])[1] || '';
+            const rest = line.slice(indent.length);
+            const tasksInLine = [];
+            let match = null;
+            tokenRe.lastIndex = 0;
+            while ((match = tokenRe.exec(rest)) !== null) {
+                const tokenEnd = tokenRe.lastIndex;
+                const nextMatch = tokenRe.exec(rest);
+                const sliceEnd = nextMatch ? nextMatch.index : rest.length;
+                const content = rest.slice(tokenEnd, sliceEnd).trim();
+                const checked = /[xX]/.test(match[1] || '');
+                if (content) tasksInLine.push({ content, checked });
+                if (!nextMatch) break;
+                tokenRe.lastIndex = nextMatch.index;
+            }
+            if (tasksInLine.length) {
+                tasksInLine.forEach(t => out.push(`${indent}- [${t.checked ? 'x' : ' '}] ${t.content}`));
+                continue;
+            }
+        }
+
+        out.push(line);
+    }
+
+    return out.join('\n');
+}
+
+function planTodoStats(markdown) {
+    const normalized = normalizePlanMarkdown(markdown);
+    const lines = String(normalized || '').split('\n');
+    const re = /^(\s*)(?:[-*]|\d+\.)\s+\[( |x|X)\]\s+(.*)$/;
+    let total = 0;
+    let done = 0;
+    for (const line of lines) {
+        const m = String(line || '').match(re);
+        if (!m) continue;
+        total += 1;
+        if (/[xX]/.test(m[2] || '')) done += 1;
+    }
+    return { total, done };
+}
+
+function buildPlanMarkdownWithMarkers(markdown) {
+    const normalized = normalizePlanMarkdown(markdown);
+    const lines = String(normalized || '').split('\n');
+    const re = /^(\s*)([-*]|\d+\.)\s+\[( |x|X)\]\s+(.*)$/;
+    const marked = lines.map((line, idx) => {
+        const m = String(line || '').match(re);
+        if (!m) return line;
+        const indent = m[1] || '';
+        const bullet = m[2] || '-';
+        const flag = m[3] || ' ';
+        const text = String(m[4] || '');
+        return `${indent}${bullet} [${flag}] [[[t:${idx}]]] ${text}`;
+    }).join('\n');
+    return { lines, markedMarkdown: marked };
+}
+
+function applyPlanTodoToggle(lines, lineIndex, checked) {
+    const idx = Number(lineIndex);
+    if (!Number.isFinite(idx) || idx < 0 || idx >= lines.length) return lines;
+    const re = /^(\s*)([-*]|\d+\.)\s+\[( |x|X)\]\s+(.*)$/;
+    const m = String(lines[idx] || '').match(re);
+    if (!m) return lines;
+    const indent = m[1] || '';
+    const bullet = m[2] || '-';
+    const text = String(m[4] || '');
+    const flag = checked ? 'x' : ' ';
+    const next = [...lines];
+    next[idx] = `${indent}${bullet} [${flag}] ${text}`;
+    return next;
+}
+
+function enhancePlanTodoCheckboxes(container, taskId, lines) {
+    if (!container) return;
+    const tokenRe = /^\s*\[( |x|X)\]\s+\[\[\[t:(\d+)\]\]\]\s*/;
+    container.querySelectorAll('li').forEach(li => {
+        const target = (li.firstElementChild && li.firstElementChild.tagName === 'P') ? li.firstElementChild : li;
+        const first = target.firstChild;
+        if (!first || first.nodeType !== Node.TEXT_NODE) return;
+        const text = String(first.textContent || '');
+        const m = text.match(tokenRe);
+        if (!m) return;
+        const checked = /[xX]/.test(m[1] || '');
+        const lineIndex = Number(m[2]);
+        first.textContent = text.replace(tokenRe, '');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = checked;
+        cb.className = 'mr-2 align-middle plan-todo-toggle';
+        cb.setAttribute('data-line', String(lineIndex));
+        cb.setAttribute('data-task-id', String(taskId || ''));
+        target.insertBefore(cb, target.firstChild);
+    });
+
+    container.querySelectorAll('input.plan-todo-toggle').forEach(cb => {
+        if (cb.dataset.bound) return;
+        cb.dataset.bound = '1';
+        cb.addEventListener('change', async () => {
+            const taskIdStr = String(cb.getAttribute('data-task-id') || '');
+            const lineIndex = Number(cb.getAttribute('data-line'));
+            const idx = tasks.findIndex(x => String(x.id) === taskIdStr);
+            if (idx < 0) return;
+            const nextLines = applyPlanTodoToggle(lines, lineIndex, cb.checked);
+            const nextPlan = nextLines.join('\n');
+            const stats = planTodoStats(nextPlan);
+            const nextProgress = stats.total ? Math.round(stats.done * 100 / stats.total) : 0;
+            const updated = { ...tasks[idx] };
+            updated.plan = nextPlan;
+            updated.progress = nextProgress;
+            updated.updatedAt = new Date().toISOString();
+            try {
+                await putTaskRemote(updated);
+                tasks[idx] = updated;
+                renderTasksList();
+                if (String(activeDetailTaskId) === String(taskIdStr)) {
+                    renderTaskDetail(false);
+                }
+            } catch {
+                showToast('保存失败');
+                renderTaskDetail(false);
+            }
+        });
+    });
+}
+
 function setLoading(text) {
     const contentEl = document.getElementById('note-content');
     if (!contentEl) return;
@@ -320,16 +471,39 @@ function setHeader(title, subtitle) {
 }
 
 function setMode(mode) {
-    currentMode = mode === 'interview' ? 'interview' : 'notes';
+    currentMode = mode === 'interview' ? 'interview' : (mode === 'tasks' ? 'tasks' : 'notes');
 
     const notesView = document.getElementById('notes-view');
     const interviewView = document.getElementById('interview-view');
+    const tasksView = document.getElementById('tasks-view');
     const notesBtn = document.getElementById('mode-notes-btn');
     const interviewBtn = document.getElementById('mode-interview-btn');
+    const tasksBtn = document.getElementById('mode-tasks-btn');
     const openBtn = document.getElementById('note-open-source');
+    const sidebarTitle = document.getElementById('sidebar-title');
+    const notesSidebar = document.getElementById('notes-sidebar');
+    const notesSidebarList = document.getElementById('notes-sidebar-list');
+    const tasksSidebar = document.getElementById('tasks-sidebar');
+    const navNotes = document.getElementById('nav-item-notes');
+    const navTasks = document.getElementById('nav-item-tasks');
 
     if (notesView) notesView.classList.toggle('hidden', currentMode !== 'notes');
     if (interviewView) interviewView.classList.toggle('hidden', currentMode !== 'interview');
+    if (tasksView) tasksView.classList.toggle('hidden', currentMode !== 'tasks');
+    if (notesSidebar) notesSidebar.classList.toggle('hidden', currentMode !== 'notes');
+    if (notesSidebarList) notesSidebarList.classList.toggle('hidden', currentMode !== 'notes');
+    if (tasksSidebar) tasksSidebar.classList.toggle('hidden', currentMode !== 'tasks');
+    if (sidebarTitle) sidebarTitle.textContent = '个人工作管理';
+    if (navNotes) {
+        navNotes.classList.toggle('bg-gray-800', currentMode === 'notes');
+        navNotes.classList.toggle('text-white', currentMode === 'notes');
+        navNotes.classList.toggle('text-gray-300', currentMode !== 'notes');
+    }
+    if (navTasks) {
+        navTasks.classList.toggle('bg-gray-800', currentMode === 'tasks');
+        navTasks.classList.toggle('text-white', currentMode === 'tasks');
+        navTasks.classList.toggle('text-gray-300', currentMode !== 'tasks');
+    }
 
     if (notesBtn) {
         notesBtn.classList.toggle('bg-white', currentMode === 'notes');
@@ -343,6 +517,12 @@ function setMode(mode) {
         interviewBtn.classList.toggle('shadow-sm', currentMode === 'interview');
         interviewBtn.classList.toggle('text-gray-600', currentMode !== 'interview');
     }
+    if (tasksBtn) {
+        tasksBtn.classList.toggle('bg-white', currentMode === 'tasks');
+        tasksBtn.classList.toggle('text-gray-900', currentMode === 'tasks');
+        tasksBtn.classList.toggle('shadow-sm', currentMode === 'tasks');
+        tasksBtn.classList.toggle('text-gray-600', currentMode !== 'tasks');
+    }
 
     if (openBtn) {
         if (currentMode === 'notes' && activeNoteName) openBtn.classList.remove('hidden');
@@ -354,8 +534,13 @@ function setMode(mode) {
         if (cached) setHeader(cached.title || activeNoteName, `文件：${activeNoteName}`);
         else setHeader('移动端知识总结', '');
     } else {
-        setHeader('面试题', '选择题库来源开始练习');
-        initInterviewUI();
+        if (currentMode === 'interview') {
+            setHeader('面试题', '选择题库来源开始练习');
+            initInterviewUI();
+        } else if (currentMode === 'tasks') {
+            setHeader('任务管理', '新建任务、规划并跟踪进度');
+            initTasksUI();
+        }
     }
 }
 
@@ -737,13 +922,427 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const notesModeBtn = document.getElementById('mode-notes-btn');
-    if (notesModeBtn) {
-        notesModeBtn.addEventListener('click', () => setMode('notes'));
+    if (notesModeBtn) notesModeBtn.addEventListener('click', () => setMode('notes'));
+    const tasksModeBtn = document.getElementById('mode-tasks-btn');
+    if (tasksModeBtn) tasksModeBtn.addEventListener('click', () => setMode('tasks'));
+    const navNotes = document.getElementById('nav-item-notes');
+    if (navNotes && !navNotes.dataset.bound) {
+        navNotes.dataset.bound = '1';
+        navNotes.addEventListener('click', () => setMode('notes'));
     }
-    const interviewModeBtn = document.getElementById('mode-interview-btn');
-    if (interviewModeBtn) {
-        interviewModeBtn.addEventListener('click', () => setMode('interview'));
+    const navTasks = document.getElementById('nav-item-tasks');
+    if (navTasks && !navTasks.dataset.bound) {
+        navTasks.dataset.bound = '1';
+        navTasks.addEventListener('click', () => setMode('tasks'));
+    }
+    const modal = document.getElementById('task-modal');
+    const modalOpen = document.getElementById('task-modal-open');
+    const modalClose = document.getElementById('task-modal-close');
+    const modalCancel = document.getElementById('task-modal-cancel');
+    const modalOverlay = document.getElementById('task-modal-overlay');
+    const openModal = () => { if (modal) modal.classList.remove('hidden'); };
+    const closeModal = () => { if (modal) modal.classList.add('hidden'); };
+    if (modalOpen && !modalOpen.dataset.bound) {
+        modalOpen.dataset.bound = '1';
+        modalOpen.addEventListener('click', () => openModal());
+    }
+    [modalClose, modalCancel, modalOverlay].forEach(btn => {
+        if (btn && !btn.dataset.bound) {
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', () => closeModal());
+        }
+    });
+
+    const detailOverlay = document.getElementById('task-detail-overlay');
+    const detailClose = document.getElementById('task-detail-close');
+    const detailEditBtn = document.getElementById('task-detail-edit-btn');
+    const detailCancelEdit = document.getElementById('task-detail-cancel-edit');
+    const detailSaveEdit = document.getElementById('task-detail-save-edit');
+    const closeDetail = () => closeTaskDetail();
+    [detailOverlay, detailClose].forEach(btn => {
+        if (btn && !btn.dataset.bound) {
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', () => closeDetail());
+        }
+    });
+    if (detailEditBtn && !detailEditBtn.dataset.bound) {
+        detailEditBtn.dataset.bound = '1';
+        detailEditBtn.addEventListener('click', () => renderTaskDetail(true));
+    }
+    if (detailCancelEdit && !detailCancelEdit.dataset.bound) {
+        detailCancelEdit.dataset.bound = '1';
+        detailCancelEdit.addEventListener('click', () => renderTaskDetail(false));
+    }
+    if (detailSaveEdit && !detailSaveEdit.dataset.bound) {
+        detailSaveEdit.dataset.bound = '1';
+        detailSaveEdit.addEventListener('click', async () => {
+            const idx = tasks.findIndex(x => String(x.id) === activeDetailTaskId);
+            if (idx < 0) return;
+            const titleInput = document.getElementById('task-detail-title-input');
+            const priSel = document.getElementById('task-detail-priority');
+            const dueInput = document.getElementById('task-detail-due');
+            const tagsInput = document.getElementById('task-detail-tags');
+            const planInput = document.getElementById('task-detail-plan');
+            tasks[idx].title = String(titleInput?.value || '').trim() || '未命名任务';
+            tasks[idx].priority = String(priSel?.value || 'P2');
+            tasks[idx].dueDate = String(dueInput?.value || '');
+            tasks[idx].tags = String(tagsInput?.value || '').split(',').map(s => s.trim()).filter(Boolean);
+            tasks[idx].plan = String(planInput?.value || '');
+            const s = planTodoStats(tasks[idx].plan);
+            if (s.total) {
+                tasks[idx].progress = Math.round(s.done * 100 / s.total);
+            }
+            tasks[idx].updatedAt = new Date().toISOString();
+            try {
+                await putTaskRemote(tasks[idx]);
+                renderTasksList();
+                renderTaskDetail(false);
+                showToast('已保存修改');
+            } catch {
+                showToast('保存失败');
+            }
+        });
     }
 
     bootstrap();
 });
+
+async function fetchTasksList() {
+    const res = await fetch('/api/tasks/list', { method: 'GET' });
+    if (!res.ok) throw new Error('tasks_list_failed');
+    const data = await res.json();
+    return Array.isArray(data?.tasks) ? data.tasks : [];
+}
+
+async function putTaskRemote(task) {
+    const res = await fetch('/api/tasks/put', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(task || {})
+    });
+    if (!res.ok) throw new Error('task_put_failed');
+    return await res.json();
+}
+
+async function deleteTaskRemote(id) {
+    const res = await fetch('/api/tasks/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+    });
+    if (!res.ok) throw new Error('task_delete_failed');
+    return await res.json();
+}
+
+function getFilteredTasks() {
+    const statusSel = document.getElementById('tasks-filter-status');
+    const priSel = document.getElementById('tasks-filter-priority');
+    const sortSel = document.getElementById('tasks-sort');
+    taskFilterStatus = statusSel ? (statusSel.value || 'all') : taskFilterStatus;
+    taskFilterPriority = priSel ? (priSel.value || 'all') : taskFilterPriority;
+    taskSortMode = sortSel ? (sortSel.value || 'updated_desc') : taskSortMode;
+    const filtered = tasks.filter(t => {
+        const okStatus = taskFilterStatus === 'all' || String(t.status || 'todo') === taskFilterStatus;
+        const okPri = taskFilterPriority === 'all' || String(t.priority || 'P2') === taskFilterPriority;
+        return okStatus && okPri;
+    });
+    if (taskSortMode === 'due_asc') {
+        filtered.sort((a, b) => String(a?.dueDate || '').localeCompare(String(b?.dueDate || '')));
+    } else if (taskSortMode === 'priority') {
+        const rank = v => v === 'P1' ? 1 : v === 'P2' ? 2 : 3;
+        filtered.sort((a, b) => rank(String(a?.priority || 'P2')) - rank(String(b?.priority || 'P2')));
+    } else {
+        filtered.sort((a, b) => String(b?.updatedAt || b?.createdAt || '').localeCompare(String(a?.updatedAt || a?.createdAt || '')));
+    }
+    return filtered;
+}
+
+function updateTasksSidebarStats() {
+    const el = document.getElementById('tasks-sidebar-stats');
+    if (!el) return;
+    const total = tasks.length;
+    const tTodo = tasks.filter(t => String(t.status || 'todo') === 'todo').length;
+    const tDoing = tasks.filter(t => String(t.status || 'todo') === 'doing').length;
+    const tDone = tasks.filter(t => String(t.status || 'todo') === 'done').length;
+    el.textContent = `任务统计：共 ${total}｜待办 ${tTodo}｜进行中 ${tDoing}｜已完成 ${tDone}`;
+}
+
+function renderTasksList() {
+    const listEl = document.getElementById('tasks-list');
+    if (!listEl) return;
+    const display = getFilteredTasks();
+    if (!display.length) {
+        listEl.innerHTML = '<div class="px-4 py-6 text-sm text-gray-500">暂无任务，先在上方创建一个。</div>';
+        updateTasksSidebarStats();
+        return;
+    }
+    const rows = display.map(t => {
+        const id = String(t.id || '');
+        const title = escapeHtml(t.title || '未命名任务');
+        const pri = escapeHtml(t.priority || 'P2');
+        const tags = Array.isArray(t.tags) ? t.tags : (typeof t.tags === 'string' ? t.tags.split(',').map(s => s.trim()).filter(Boolean) : []);
+        return `
+        <div class="px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3" data-id="${id}">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    <div class="text-sm font-semibold text-gray-900 truncate">${title}</div>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${pri === 'P1' ? 'bg-rose-100 text-rose-700' : (pri === 'P2' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700')}">${pri}</span>
+                    ${tags.map(tag => `<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-gray-100 text-gray-700">${escapeHtml(tag)}</span>`).join('')}
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="text-xs text-gray-500">截止</div>
+                <input type="date" class="border-gray-300 rounded-lg text-sm px-2 py-1 task-due">
+            </div>
+            <div class="flex items-center gap-2">
+                <select class="border-gray-300 rounded-lg text-sm task-status">
+                    <option value="todo">待办</option>
+                    <option value="doing">进行中</option>
+                    <option value="done">已完成</option>
+                </select>
+            </div>
+            <div class="flex items-center gap-2 w-48">
+                <input type="range" min="0" max="100" class="w-full task-progress">
+                <span class="text-xs w-10 text-right task-progress-text"></span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button class="px-3 py-1.5 rounded-md text-sm bg-white border border-gray-200 hover:bg-gray-50 task-details">详情</button>
+                <button class="px-3 py-1.5 rounded-md text-sm bg-rose-600 text-white hover:bg-rose-700 task-del">删除</button>
+            </div>
+        </div>
+        `;
+    }).join('\n');
+    listEl.innerHTML = rows;
+    listEl.querySelectorAll('[data-id]').forEach(row => {
+        const id = row.getAttribute('data-id') || '';
+        const t = tasks.find(x => String(x.id) === id) || {};
+        const dueEl = row.querySelector('.task-due');
+        const statusEl = row.querySelector('.task-status');
+        const progEl = row.querySelector('.task-progress');
+        const progText = row.querySelector('.task-progress-text');
+        const detailsBtn = row.querySelector('.task-details');
+        const delBtn = row.querySelector('.task-del');
+        const planStats = planTodoStats(t.plan || '');
+        if (dueEl) dueEl.value = String(t.dueDate || '').slice(0, 10);
+        if (statusEl) statusEl.value = String(t.status || 'todo');
+        if (progEl) progEl.value = String(Math.max(0, Math.min(100, +t.progress || 0)));
+        if (progText) progText.textContent = `${Math.max(0, Math.min(100, +t.progress || 0))}%`;
+        if (progEl) {
+            const disable = planStats.total > 0;
+            progEl.disabled = disable;
+            progEl.classList.toggle('opacity-50', disable);
+            progEl.classList.toggle('cursor-not-allowed', disable);
+        }
+        let saveTimer = null;
+        const saveInline = async () => {
+            const idx = tasks.findIndex(x => String(x.id) === id);
+            if (idx < 0) return;
+            const updated = { ...tasks[idx] };
+            updated.dueDate = dueEl?.value || '';
+            updated.status = statusEl?.value || 'todo';
+            if (!progEl?.disabled) {
+                updated.progress = Number(progEl?.value || 0);
+            }
+            updated.updatedAt = new Date().toISOString();
+            try {
+                await putTaskRemote(updated);
+                tasks[idx] = updated;
+            } catch {
+                showToast('保存失败');
+            }
+        };
+        if (dueEl) dueEl.addEventListener('change', () => saveInline());
+        if (statusEl) statusEl.addEventListener('change', () => saveInline());
+        if (progEl && !progEl.disabled) {
+            progEl.addEventListener('input', () => {
+                if (progText) progText.textContent = `${progEl.value}%`;
+            });
+            progEl.addEventListener('change', () => {
+                if (saveTimer) window.clearTimeout(saveTimer);
+                saveTimer = window.setTimeout(() => saveInline(), 150);
+            });
+        }
+        if (detailsBtn) detailsBtn.addEventListener('click', () => openTaskDetail(id));
+        if (delBtn) {
+            delBtn.addEventListener('click', async () => {
+                try {
+                    await deleteTaskRemote(id);
+                    tasks = tasks.filter(x => String(x.id) !== id);
+                    renderTasksList();
+                    showToast('已删除');
+                    updateTasksSidebarStats();
+                } catch {
+                    showToast('删除失败');
+                }
+            });
+        }
+    });
+    updateTasksSidebarStats();
+}
+
+let activeDetailTaskId = '';
+
+function openTaskDetail(taskId) {
+    activeDetailTaskId = String(taskId || '');
+    const modal = document.getElementById('task-detail-modal');
+    if (!modal) return;
+    renderTaskDetail(false);
+    modal.classList.remove('hidden');
+}
+
+function closeTaskDetail() {
+    const modal = document.getElementById('task-detail-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    activeDetailTaskId = '';
+}
+
+function renderTaskDetail(editMode) {
+    const idx = tasks.findIndex(x => String(x.id) === activeDetailTaskId);
+    if (idx < 0) return;
+    const t = tasks[idx];
+    const titleEl = document.getElementById('task-detail-title');
+    const metaEl = document.getElementById('task-detail-meta');
+    const viewEl = document.getElementById('task-detail-view');
+    const editEl = document.getElementById('task-detail-edit');
+    const editBtn = document.getElementById('task-detail-edit-btn');
+    const cancelBtn = document.getElementById('task-detail-cancel-edit');
+    const saveBtn = document.getElementById('task-detail-save-edit');
+    const planPreview = document.getElementById('task-detail-plan-preview');
+    if (titleEl) titleEl.textContent = t.title || '未命名任务';
+    if (metaEl) metaEl.textContent = `截止：${String(t.dueDate || '').slice(0, 10) || '无'}｜优先级：${t.priority || 'P2'}｜状态：${t.status || 'todo'}｜进度：${Math.max(0, Math.min(100, +t.progress || 0))}%`;
+    if (viewEl) viewEl.classList.toggle('hidden', editMode);
+    if (editEl) editEl.classList.toggle('hidden', !editMode);
+    if (editBtn) editBtn.classList.toggle('hidden', editMode);
+    if (cancelBtn) cancelBtn.classList.toggle('hidden', !editMode);
+    if (saveBtn) saveBtn.classList.toggle('hidden', !editMode);
+    if (!editMode) {
+        if (planPreview) {
+            const built = buildPlanMarkdownWithMarkers(String(t.plan || ''));
+            const html = renderMarkdown(built.markedMarkdown);
+            planPreview.innerHTML = html;
+            enhancePlanTodoCheckboxes(planPreview, activeDetailTaskId, built.lines);
+        }
+        return;
+    }
+    const titleInput = document.getElementById('task-detail-title-input');
+    const priSel = document.getElementById('task-detail-priority');
+    const dueInput = document.getElementById('task-detail-due');
+    const tagsInput = document.getElementById('task-detail-tags');
+    const planInput = document.getElementById('task-detail-plan');
+    if (titleInput) titleInput.value = t.title || '';
+    if (priSel) priSel.value = t.priority || 'P2';
+    if (dueInput) dueInput.value = String(t.dueDate || '').slice(0, 10);
+    const tags = Array.isArray(t.tags) ? t.tags : (typeof t.tags === 'string' ? t.tags.split(',').map(s => s.trim()).filter(Boolean) : []);
+    if (tagsInput) tagsInput.value = tags.join(', ');
+    if (planInput) planInput.value = String(t.plan || '');
+}
+
+function initTasksUI() {
+    const addBtn = document.getElementById('task-add');
+    const titleEl = document.getElementById('task-title');
+    const planEl = document.getElementById('task-plan');
+    const priEl = document.getElementById('task-priority');
+    const dueEl = document.getElementById('task-due');
+    const tagsEl = document.getElementById('task-tags');
+    const modal = document.getElementById('task-modal');
+    const modalOpen = document.getElementById('task-modal-open');
+    const modalClose = document.getElementById('task-modal-close');
+    const modalCancel = document.getElementById('task-modal-cancel');
+    const modalOverlay = document.getElementById('task-modal-overlay');
+    const openModal = () => { if (modal) modal.classList.remove('hidden'); };
+    const closeModal = () => { if (modal) modal.classList.add('hidden'); };
+    if (modalOpen && !modalOpen.dataset.bound) {
+        modalOpen.dataset.bound = '1';
+        modalOpen.addEventListener('click', () => {
+            if (titleEl) titleEl.value = '';
+            if (tagsEl) tagsEl.value = '';
+            if (planEl) planEl.value = '';
+            if (priEl) priEl.value = 'P2';
+            if (dueEl) dueEl.value = '';
+            openModal();
+        });
+    }
+    [modalClose, modalCancel, modalOverlay].forEach(btn => {
+        if (btn && !btn.dataset.bound) {
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', () => closeModal());
+        }
+    });
+    if (addBtn && !addBtn.dataset.bound) {
+        addBtn.dataset.bound = '1';
+        addBtn.addEventListener('click', async () => {
+            const title = String(titleEl?.value || '').trim();
+            if (!title) {
+                showToast('请输入标题');
+                return;
+            }
+            const now = new Date().toISOString();
+            const tags = String(tagsEl?.value || '').split(',').map(s => s.trim()).filter(Boolean);
+            const plan = String(planEl?.value || '');
+            const s = planTodoStats(plan);
+            const task = {
+                id: Date.now().toString(),
+                title,
+                plan,
+                priority: priEl?.value || 'P2',
+                dueDate: dueEl?.value || '',
+                status: 'todo',
+                progress: s.total ? Math.round(s.done * 100 / s.total) : 0,
+                tags,
+                createdAt: now,
+                updatedAt: now
+            };
+            try {
+                await putTaskRemote(task);
+                tasks.unshift(task);
+                renderTasksList();
+                if (titleEl) titleEl.value = '';
+                if (planEl) planEl.value = '';
+                if (dueEl) dueEl.value = '';
+                if (priEl) priEl.value = 'P2';
+                if (tagsEl) tagsEl.value = '';
+                closeModal();
+                showToast('已新建任务');
+                updateTasksSidebarStats();
+            } catch {
+                showToast('新建失败');
+            }
+        });
+    }
+    const statusSel = document.getElementById('tasks-filter-status');
+    const priSel = document.getElementById('tasks-filter-priority');
+    const refreshBtn = document.getElementById('tasks-sidebar-refresh');
+    const sortSel = document.getElementById('tasks-sort');
+    if (statusSel && !statusSel.dataset.bound) {
+        statusSel.dataset.bound = '1';
+        statusSel.addEventListener('change', () => renderTasksList());
+    }
+    if (priSel && !priSel.dataset.bound) {
+        priSel.dataset.bound = '1';
+        priSel.addEventListener('change', () => renderTasksList());
+    }
+    if (sortSel && !sortSel.dataset.bound) {
+        sortSel.dataset.bound = '1';
+        sortSel.addEventListener('change', () => renderTasksList());
+    }
+    if (refreshBtn && !refreshBtn.dataset.bound) {
+        refreshBtn.dataset.bound = '1';
+        refreshBtn.addEventListener('click', async () => {
+            await loadTasks();
+            showToast('已刷新任务');
+        });
+    }
+    loadTasks();
+}
+
+async function loadTasks() {
+    try {
+        tasks = await fetchTasksList();
+        tasks.sort((a, b) => String(b?.updatedAt || b?.createdAt || '').localeCompare(String(a?.updatedAt || a?.createdAt || '')));
+    } catch {
+        tasks = [];
+    }
+    renderTasksList();
+    updateTasksSidebarStats();
+}

@@ -3,6 +3,7 @@ import socketserver
 import json
 import os
 import urllib.parse
+import time
 
 PORT = 8081  # Default to 8081 to match user preference
 DATA_FILE = "nexus_data.json"
@@ -89,6 +90,19 @@ class NexusHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
 
+        if parsed.path == '/api/tasks/list':
+            if os.path.exists(DATA_FILE):
+                try:
+                    with open(DATA_FILE, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                except Exception:
+                    data = {}
+            else:
+                data = {}
+            tasks = data.get('tasks_v1') or []
+            self._send_json(200, {'tasks': tasks})
+            return
+
         if parsed.path == '/api/data':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
@@ -135,7 +149,7 @@ class NexusHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_HEAD(self):
         parsed = urllib.parse.urlparse(self.path)
-        if parsed.path in ['/api/data', '/api/notes/list', '/api/notes/file', '/api/interview/list', '/api/interview/file']:
+        if parsed.path in ['/api/data', '/api/notes/list', '/api/notes/file', '/api/interview/list', '/api/interview/file', '/api/tasks/list']:
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
@@ -143,6 +157,68 @@ class NexusHandler(http.server.SimpleHTTPRequestHandler):
             super().do_HEAD()
 
     def do_POST(self):
+        if self.path == '/api/tasks/put':
+            content_length = int(self.headers.get('Content-Length') or '0')
+            raw = self.rfile.read(content_length) if content_length > 0 else b'{}'
+            try:
+                payload = json.loads(raw.decode('utf-8'))
+                if not isinstance(payload, dict):
+                    self._send_json(400, {'error': 'invalid_payload'})
+                    return
+                tid = str(payload.get('id') or '')
+                if not tid:
+                    tid = str(int(time.time() * 1000))
+                    payload['id'] = tid
+                if os.path.exists(DATA_FILE):
+                    try:
+                        with open(DATA_FILE, 'r', encoding='utf-8') as f:
+                            data = json.load(f)
+                    except Exception:
+                        data = {}
+                else:
+                    data = {}
+                tasks = data.get('tasks_v1') or []
+                found = False
+                for i in range(len(tasks)):
+                    if str(tasks[i].get('id')) == tid:
+                        tasks[i] = payload
+                        found = True
+                        break
+                if not found:
+                    tasks.append(payload)
+                data['tasks_v1'] = tasks
+                with open(DATA_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+                self._send_json(200, {'ok': True, 'id': tid})
+            except Exception as e:
+                self._send_json(500, {'error': str(e)})
+            return
+        if self.path == '/api/tasks/delete':
+            content_length = int(self.headers.get('Content-Length') or '0')
+            raw = self.rfile.read(content_length) if content_length > 0 else b'{}'
+            try:
+                payload = json.loads(raw.decode('utf-8'))
+                tid = str(payload.get('id') or '')
+                if not tid:
+                    self._send_json(400, {'error': 'missing_id'})
+                    return
+                if os.path.exists(DATA_FILE):
+                    try:
+                        with open(DATA_FILE, 'r', encoding='utf-8') as f:
+                            data = json.load(f)
+                    except Exception:
+                        data = {}
+                else:
+                    data = {}
+                tasks = data.get('tasks_v1') or []
+                tasks = [t for t in tasks if str(t.get('id')) != tid]
+                data['tasks_v1'] = tasks
+                with open(DATA_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+                self._send_json(200, {'ok': True})
+            except Exception as e:
+                self._send_json(500, {'error': str(e)})
+            return
         if self.path == '/api/save':
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
