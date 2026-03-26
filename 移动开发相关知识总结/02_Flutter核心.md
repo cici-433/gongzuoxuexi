@@ -32,6 +32,72 @@ RenderObject Tree（渲染树）← 负责 Layout / Paint
 **Q：Widget 重建一定会导致 RenderObject 重建吗？**
 > 不会。Element 通过 `canUpdate()` 判断是否复用。key 相同、类型相同时 Element 复用，仅更新 RenderObject 的配置属性（如 size/color），避免昂贵的重建。
 
+#### 1.1.1 页面如何从 setState 更新到屏幕
+
+```
+setState()                         // 标记对应 Element 为 dirty
+  └─ markNeedsBuild()
+       └─ BuildOwner.scheduled = true
+             └─ SchedulerBinding.ensureVisualUpdate() // 请求下一帧
+下一帧（vsync）
+  └─ BuildOwner.buildScope()       // 依次遍历 dirty 列表
+       └─ element.rebuild()
+            └─ widget.build()      // 产出新的子 Widget 树
+            └─ updateChild()       // 逐个 child 做 diff：
+                 - canUpdate => 复用 Element + update()
+                 - 否则 => unmount 旧、inflate 新
+            └─ renderObject.markNeedsLayout/markNeedsPaint（若布局/样式变更）
+布局/绘制阶段
+  └─ RenderObject.performLayout() / paint()
+  └─ 合成到 GPU，上屏
+```
+
+#### 1.1.2 Element 生命周期（面试常问）
+- mount：由父 Element 调用，关联 Widget，创建/挂接 RenderObject
+- update：当 `canUpdate` 判定可复用时，更新配置并视情况触发布局/绘制
+- deactivate：从树上暂时移除（例如节点位置变了），仍可被复用
+- unmount：彻底移除，释放资源
+
+#### 1.1.3 Diff 核心规则（updateChild 简化版）
+```dart
+bool canUpdate(Widget oldW, Widget newW) {
+  return oldW.runtimeType == newW.runtimeType && oldW.key == newW.key;
+}
+```
+- 相同类型且 key 相同：复用 Element → 调用 `update()`（RenderObject 仅刷新配置）
+- 类型或 key 不同：卸载旧 Element（deactivate/unmount），创建新 Element（inflate）
+- 复用优先级：尽量在原位置复用，减少子树波动
+
+#### 1.1.4 key 的作用与实战
+- 无 key 列表：按位置对齐 diff；插入/删除中间元素易导致“错位重用”
+- `ValueKey/UniqueKey`：将节点与业务 id 绑定，确保稳定复用目标
+- `GlobalKey`：可在树中移动组件并保留 State，但成本高（全局注册/查找），仅在需要保留状态跨位置迁移时使用
+
+示例（避免列表错位）：
+```dart
+ListView(
+  children: items.map((it) => ListTile(
+    key: ValueKey(it.id),
+    title: Text(it.title),
+  )).toList(),
+);
+```
+
+#### 1.1.5 RenderObject 更新到渲染
+- 布局异动：`RenderObject.markNeedsLayout()` → 布局阶段自上而下传递约束（BoxConstraints），自下而上确定尺寸与位置
+- 绘制异动：`RenderObject.markNeedsPaint()` → 绘制阶段生成 `Layer` 树，交给合成器
+- 只改配置（如颜色）不改布局：通常仅触发 paint，避免 layout 开销
+
+#### 1.1.6 InheritedWidget 依赖跟踪
+- `InheritedElement` 维护依赖表，`dependOnInheritedWidgetOfExactType` 时注册依赖
+- 祖先 InheritedWidget 变更后，仅通知已登记依赖的子树重建，降低重建面
+
+#### 1.1.7 常见陷阱与原则
+- 列表项缺 key → 重建/重用错位，状态串台
+- 过度使用 GlobalKey → 性能与维护成本高
+- 在父级 setState 包裹大范围 → 重建面过大；应下沉到更小的 Stateful 组件
+- 通过 const、拆分 Widget、使用 Inherited/Selector 等手段控制重建范围
+
 ---
 
 ### 1.2 渲染管线
@@ -353,3 +419,81 @@ Stream<int> counter() async* {
 
 **Q：Dart 的 async/await 和 Kotlin 协程的本质区别？**
 > Dart async/await 是**单线程事件循环**，本质是语法糖，底层是 Future/Microtask 队列，不涉及线程切换。Kotlin 协程是**协作式多线程**，可通过 Dispatcher 调度到不同线程（IO/Main/Default），适合 CPU 密集型任务。两者都实现了"用同步写法写异步代码"的目标，但执行模型不同。
+
+### 6.1 单线程事件循环（Event Loop）详解
+
+#### 6.1.1 基本模型
+- Dart 中每个 Isolate 都有**自己的事件循环（Event Loop）**，同一时刻只执行**一个任务**（单线程）
+- 事件循环维护两类队列：
+  - Microtask Queue（微任务队列）：优先级更高，常用于 then/await 回调、`scheduleMicrotask`、`Future.value/.microtask`
+  - Event Queue（事件队列）：IO、计时器（`Timer`/`Future.delayed`）、操作系统事件等
+- 一次“循环拍”：先把当前拍产生的所有 microtasks 全部清空，再取出一个 event 执行；然后再次清空微任务；周而复始
+
+```
+while (true) {
+  drainMicrotaskQueue();   // 全部执行完
+  executeNextEvent();      // 只取一个 event
+}
+```
+
+关键含义：只要不断往微任务队列塞任务，就会**饿死**事件队列（导致定时器/IO 回调延后，Flutter 帧调度受阻）。
+
+#### 6.1.2 Future、then 与 microtask 的关系
+- `Future(value)` / `Future.value(value)`：立即完成，但其回调（then/await continuation）被安排在**微任务队列**
+- `Future(() { ... })`：回调在**事件队列**（下一“事件拍”）执行
+- `Future.microtask(() { ... })` 与 `scheduleMicrotask(() { ... })`：都入**微任务队列**
+- `then/catchError/whenComplete`：无论 Future 如何完成，回调统一排入**微任务队列**
+- `async/await`：`await` 会让出当前执行；当被等待的 Future 完成时，其继续执行部分（continuation）作为**微任务**调度
+
+示例（输出顺序标注）：
+
+```dart
+import 'dart:async';
+
+void main() {
+  print('A');                                  // 1
+
+  Future(() => print('B (event)'));            // 6（事件队列）
+  Future.microtask(() => print('C (micro)'));  // 3
+  scheduleMicrotask(() => print('D (micro)')); // 4
+
+  Future.value(1).then((_) => print('E (then micro)')); // 5
+  Future(() => null).then((_) => print('F (then micro after B)')); // 7
+
+  print('G');                                  // 2
+}
+```
+
+执行顺序：A → G → C → D → E → B → F  
+解释：同步代码先执行；随后清空微任务（C/D/E）；再取一个事件（B），B 完成后其 then 入微任务队列，立即执行 F。
+
+#### 6.1.3 Timer 与队列
+- `Future.delayed(Duration.zero, ...)` 与 `Timer(Duration.zero, ...)` 都属于**事件队列**任务（优先级低于微任务）
+- 大量 `Duration.zero` 定时器不会阻塞帧，但若同时有大量微任务会被延迟执行
+
+#### 6.1.4 Zone（运行域）与错误捕获
+- Zone 是 Dart 的执行上下文，能拦截计时器、微任务、打印、未捕获异常等
+- `runZonedGuarded` 可捕获异步错误；Flutter 框架在自己的 Zone 中运行，用于接管错误与调度
+
+```dart
+runZonedGuarded(() async {
+  scheduleMicrotask(() { throw 'micro error'; });
+}, (e, st) {
+  print('捕获到异步错误: $e');
+});
+```
+
+注意：同步异常需用 `try/catch`；异步异常若不在同一事件拍内抛出，需通过 Zone 或在回调内部 `try/catch`。
+
+#### 6.1.5 与 Flutter 的关系（主 Isolate UI 线程）
+- Flutter 主 Isolate 负责**构建/布局/绘制**与**帧调度**（SchedulerBinding）
+- 若在主 Isolate 内执行**长时间同步计算**，会阻塞事件循环，导致**掉帧**
+- 将 CPU 密集任务放入**子 Isolate**（如 `compute` 或 `Isolate.spawn`）；IO 使用 `async/await` 非阻塞
+- 大量/持续 `scheduleMicrotask` 会让微任务队列持续非空，影响帧调度（表现为 jank）
+
+#### 6.1.6 最佳实践清单
+- UI 主线程（主 Isolate）里避免重型同步计算；用 `compute` 或手动 `Isolate.spawn`
+- 需要“尽快但在本拍结束后”执行 → microtask；需要“下一拍再执行/不阻塞微任务” → `Future(() { ... })` 或 `Timer.zero`
+- 尽量少用长期循环往微任务塞任务，防止事件队列饥饿
+- then/await 的回调天然是微任务，不必手动再包一层 `scheduleMicrotask`
+- 业务级异步错误统一通过 `runZonedGuarded` 或框架钩子上报；内部回调继续 `try/catch` 精准处理
